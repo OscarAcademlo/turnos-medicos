@@ -65,6 +65,7 @@ if(googleLoginBtn) {
             })
             .catch((error) => {
                 showError('Error al iniciar sesión con Google: ' + error.message);
+            });
     });
 }
 
