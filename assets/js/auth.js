@@ -28,7 +28,7 @@ function handleBackendLogin(user) {
         if(data.user) {
             // Guardar datos en localStorage y redirigir al dashboard
             localStorage.setItem('user', JSON.stringify(data.user));
-            window.location.href = 'dashboard.html';
+            window.location.href = 'dashboard.php';
         } else {
             showError(data.message || 'Error al conectar con el servidor.');
         }

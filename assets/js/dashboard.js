@@ -1,23 +1,38 @@
 document.addEventListener('DOMContentLoaded', () => {
     const userJson = localStorage.getItem('user');
     
-    // Verificar si el usuario está logueado en LocalStorage
+    // Verificar si el usuario tiene datos básicos locales
     if(!userJson) {
-        window.location.href = 'index.html';
+        window.location.href = 'index.php';
         return;
     }
 
-    const user = JSON.parse(userJson);
-    
-    // Setear datos en la UI
-    document.getElementById('user-name-display').textContent = user.nombre;
-    document.getElementById('user-role-display').textContent = user.rol.toUpperCase();
+    // Consultar al servidor por los datos MÁS RECIENTES (incluyendo el rol actualizado)
+    fetch('backend/api/me.php')
+        .then(res => {
+            if(!res.ok) throw new Error('Sesión inválida');
+            return res.json();
+        })
+        .then(data => {
+            const user = data.user;
+            // Actualizar localStorage con el nuevo rol
+            localStorage.setItem('user', JSON.stringify(user));
+            
+            // Setear datos en la UI
+            document.getElementById('user-name-display').textContent = user.nombre;
+            document.getElementById('user-role-display').textContent = user.rol.toUpperCase();
 
-    // Mostrar menús restringidos según el rol
-    if(user.rol === 'superadmin' || user.rol === 'admin' || user.rol === 'recepcionista') {
-        const adminElements = document.querySelectorAll('.admin-only');
-        adminElements.forEach(el => el.classList.remove('d-none'));
-    }
+            // Mostrar menús restringidos según el rol real de la BD
+            if(user.rol === 'superadmin' || user.rol === 'admin' || user.rol === 'recepcionista') {
+                const adminElements = document.querySelectorAll('.admin-only');
+                adminElements.forEach(el => el.classList.remove('d-none'));
+            }
+        })
+        .catch(() => {
+            // Si la sesión en PHP expiró, forzamos logout
+            localStorage.removeItem('user');
+            window.location.href = 'index.php';
+        });
 
     // Lógica de navegación entre "pantallas"
     const menuDashboard = document.getElementById('menu-dashboard');
@@ -51,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('logout-btn').addEventListener('click', () => {
         auth.signOut().then(() => {
             localStorage.removeItem('user');
-            window.location.href = 'index.html';
+            window.location.href = 'index.php';
         });
     });
 });
