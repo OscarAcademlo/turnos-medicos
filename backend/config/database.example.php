@@ -1,9 +1,10 @@
 <?php
-// Configuración de la base de datos
-define('DB_HOST', 'localhost'); // En Hostinger suele ser localhost
-define('DB_NAME', 'u237313556_turnos_medicos'); // Nombre de BD actualizado según tu phpMyAdmin
-define('DB_USER', 'root'); // Cambiar por el usuario de la DB en producción
-define('DB_PASS', ''); // Cambiar por la contraseña de la DB en producción
+// Configuración de la base de datos (Plantilla de ejemplo)
+// NO EDITES ESTE ARCHIVO. Cópialo como 'database.php' e ingresa tus credenciales ahí.
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'tu_base_de_datos');
+define('DB_USER', 'tu_usuario');
+define('DB_PASS', 'tu_contraseña');
 
 class Database {
     private $host = DB_HOST;
