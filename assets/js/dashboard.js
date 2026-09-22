@@ -236,11 +236,9 @@ function cargarObrasSociales() {
         .then(data => {
             tbody.innerHTML = '';
             if(data.length > 0) {
-                // Para no colgar el navegador si son 2000, mostramos los primeros 100 por ahora.
-                // Idealmente, esto debería tener paginación o un DataTable.
-                const mostrar = data.slice(0, 100);
-                mostrar.forEach(obra => {
-                    tbody.innerHTML += `
+                let html = '';
+                data.forEach(obra => {
+                    html += `
                         <tr>
                             <td class="ps-4 fw-bold text-muted">#${obra.id}</td>
                             <td>${obra.nombre}</td>
@@ -251,9 +249,16 @@ function cargarObrasSociales() {
                         </tr>
                     `;
                 });
-                if(data.length > 100) {
-                    tbody.innerHTML += `<tr><td colspan="3" class="text-center py-2 text-muted small">Mostrando 100 de ${data.length} registros. Usa la barra de búsqueda (En desarrollo).</td></tr>`;
+                tbody.innerHTML = html;
+                
+                // Initialize DataTables
+                if ($.fn.DataTable.isDataTable('#obras-table')) {
+                    $('#obras-table').DataTable().destroy();
                 }
+                $('#obras-table').DataTable({
+                    language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json' },
+                    pageLength: 10
+                });
             } else {
                 tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-muted">No hay obras sociales cargadas.</td></tr>';
             }
@@ -285,8 +290,17 @@ if(modalTurno) {
                 const sel = document.getElementById('turno-obra-social');
                 sel.innerHTML = '<option value="" selected disabled>Selecciona tu cobertura médica...</option>';
                 sel.innerHTML += '<option value="particular">Particular (Sin Obra Social)</option>';
+                
+                let html = '';
                 data.forEach(o => {
-                    sel.innerHTML += `<option value="${o.id}">${o.nombre}</option>`;
+                    html += `<option value="${o.id}">${o.nombre}</option>`;
+                });
+                sel.innerHTML += html;
+                
+                // Init Select2
+                $('#turno-obra-social').select2({
+                    theme: 'bootstrap-5',
+                    dropdownParent: $('#modalNuevoTurno')
                 });
             });
     });
