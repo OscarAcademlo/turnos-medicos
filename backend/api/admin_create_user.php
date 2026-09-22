@@ -1,0 +1,68 @@
+<?php
+session_start();
+header("Access-Control-Allow-Origin: *");
+header("Content-Type: application/json; charset=UTF-8");
+header("Access-Control-Allow-Methods: POST");
+header("Access-Control-Max-Age: 3600");
+header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+
+include_once '../config/database.php';
+
+// Verificar permisos (solo superadmin o admin pueden crear usuarios)
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['rol'], ['superadmin', 'admin'])) {
+    http_response_code(403);
+    echo json_encode(array("message" => "Acceso denegado. Se requiere nivel de administrador."));
+    exit();
+}
+
+$database = new Database();
+$db = $database->getConnection();
+$data = json_decode(file_get_contents("php://input"));
+
+if(
+    !empty($data->email) &&
+    !empty($data->nombre) &&
+    !empty($data->rol)
+) {
+    try {
+        // En este sistema, Firebase Auth maneja las contraseñas.
+        // Pero para el CRUD de admin, podemos guardar el usuario en la DB local primero
+        // y generar un firebase_uid falso o indicar que debe crearlo en Firebase.
+        // Lo ideal es que el admin llame a la Admin SDK de Firebase en NodeJS, pero en PHP
+        // guardaremos un "firebase_uid" temporal y cuando el usuario inicie sesión por 
+        // primera vez, se actualice, o simplemente usar un email.
+        
+        $email = $data->email;
+        $nombre = $data->nombre;
+        $apellido = !empty($data->apellido) ? $data->apellido : "";
+        $dni = !empty($data->dni) ? $data->dni : null;
+        $rol = $data->rol;
+
+        // Generar un UID temporal único
+        $temp_uid = "temp_" . uniqid();
+
+        $query = "INSERT INTO usuarios (firebase_uid, email, nombre, apellido, dni, rol) VALUES (:uid, :email, :nombre, :apellido, :dni, :rol)";
+        $stmt = $db->prepare($query);
+        $stmt->bindParam(":uid", $temp_uid);
+        $stmt->bindParam(":email", $email);
+        $stmt->bindParam(":nombre", $nombre);
+        $stmt->bindParam(":apellido", $apellido);
+        $stmt->bindParam(":dni", $dni);
+        $stmt->bindParam(":rol", $rol);
+
+        if($stmt->execute()) {
+            http_response_code(201);
+            echo json_encode(array("message" => "Usuario creado exitosamente en la base de datos local. Nota: Debe registrarse en Firebase con el mismo email para acceder."));
+        } else {
+            http_response_code(503);
+            echo json_encode(array("message" => "No se pudo crear el usuario. Verifique si el email ya existe."));
+        }
+    } catch(PDOException $e) {
+        http_response_code(500);
+        echo json_encode(array("message" => "Error en la base de datos: " . $e->getMessage()));
+    }
+} else {
+    http_response_code(400);
+    echo json_encode(array("message" => "Datos incompletos. Se requiere email, nombre y rol."));
+}
+?>

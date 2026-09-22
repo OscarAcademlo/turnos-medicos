@@ -37,12 +37,16 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = 'index.php';
         });
 
-    // Lógica de navegación entre "pantallas"
     const menuDashboard = document.getElementById('menu-dashboard');
     const menuUsuarios = document.getElementById('menu-usuarios');
+    const menuObras = document.getElementById('menu-obras');
+    const menuAgendaAdmin = document.getElementById('menu-agenda-admin');
     const menuTurnos = document.getElementById('menu-turnos');
+    
     const contentDashboard = document.getElementById('content-dashboard');
     const contentUsuarios = document.getElementById('content-usuarios');
+    const contentObras = document.getElementById('content-obras');
+    const contentAgendaAdmin = document.getElementById('content-agenda-admin');
     const contentTurnos = document.getElementById('content-turnos');
 
     // Función auxiliar para cambiar vistas
@@ -51,11 +55,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if(menuActivo) menuActivo.classList.add('active');
         
         contentDashboard.classList.add('d-none');
-        contentUsuarios.classList.add('d-none');
+        if(contentUsuarios) contentUsuarios.classList.add('d-none');
+        if(contentObras) contentObras.classList.add('d-none');
+        if(contentAgendaAdmin) contentAgendaAdmin.classList.add('d-none');
         if(contentTurnos) contentTurnos.classList.add('d-none');
         
         if(vistaActiva) vistaActiva.classList.remove('d-none');
-        document.getElementById('page-title').textContent = titulo;
+        document.getElementById('page-title').textContent = titulo || 'Clínica Médica';
     }
 
     // Lógica de Vistas (Navegación Sidebar)
@@ -69,6 +75,21 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             mostrarVista(contentUsuarios, menuUsuarios, 'Gestión de Usuarios');
             cargarUsuarios();
+        });
+    }
+
+    if(menuObras) {
+        menuObras.addEventListener('click', (e) => {
+            e.preventDefault();
+            mostrarVista(contentObras, menuObras, 'Obras Sociales');
+            cargarObrasSociales();
+        });
+    }
+
+    if(menuAgendaAdmin) {
+        menuAgendaAdmin.addEventListener('click', (e) => {
+            e.preventDefault();
+            mostrarVista(contentAgendaAdmin, menuAgendaAdmin, 'Agenda y Horarios');
         });
     }
 
@@ -165,5 +186,130 @@ function cambiarRol(userId, nuevoRol) {
     .catch(err => {
         alert("Error al cambiar rol.");
         cargarUsuarios();
+    });
+}
+
+// --- Nuevas Funciones Administrativas ---
+
+function crearPersonal() {
+    const btn = document.querySelector('#modalCrearUsuario .btn-primary');
+    btn.disabled = true;
+    
+    const data = {
+        nombre: document.getElementById('new-nombre').value,
+        email: document.getElementById('new-email').value,
+        rol: document.getElementById('new-rol').value
+    };
+
+    if(!data.nombre || !data.email || !data.rol) {
+        alert("Todos los campos son obligatorios");
+        btn.disabled = false;
+        return;
+    }
+
+    fetch('backend/api/admin_create_user.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        if(data.message.includes('exitosamente')) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalCrearUsuario'));
+            modal.hide();
+            document.getElementById('form-crear-personal').reset();
+            cargarUsuarios();
+        }
+    })
+    .catch(err => alert("Error de conexión"))
+    .finally(() => btn.disabled = false);
+}
+
+function cargarObrasSociales() {
+    const tbody = document.getElementById('tabla-obras');
+    tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-muted">Cargando...</td></tr>';
+    
+    fetch('backend/api/crud_obras_sociales.php')
+        .then(res => res.json())
+        .then(data => {
+            tbody.innerHTML = '';
+            if(data.length > 0) {
+                // Para no colgar el navegador si son 2000, mostramos los primeros 100 por ahora.
+                // Idealmente, esto debería tener paginación o un DataTable.
+                const mostrar = data.slice(0, 100);
+                mostrar.forEach(obra => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td class="ps-4 fw-bold text-muted">#${obra.id}</td>
+                            <td>${obra.nombre}</td>
+                            <td class="pe-4 text-end">
+                                <button class="btn btn-sm btn-outline-primary rounded-circle"><i class="bi bi-pencil"></i></button>
+                                <button class="btn btn-sm btn-outline-danger rounded-circle"><i class="bi bi-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                if(data.length > 100) {
+                    tbody.innerHTML += `<tr><td colspan="3" class="text-center py-2 text-muted small">Mostrando 100 de ${data.length} registros. Usa la barra de búsqueda (En desarrollo).</td></tr>`;
+                }
+            } else {
+                tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-muted">No hay obras sociales cargadas.</td></tr>';
+            }
+        })
+        .catch(err => {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-danger">Error de conexión</td></tr>';
+        });
+}
+
+// --- Lógica del Paciente (Solicitar Turno) ---
+const modalTurno = document.getElementById('modalNuevoTurno');
+if(modalTurno) {
+    modalTurno.addEventListener('show.bs.modal', () => {
+        // Cargar Especialidades
+        fetch('backend/api/get_especialidades.php')
+            .then(res => res.json())
+            .then(data => {
+                const sel = document.getElementById('turno-especialidad');
+                sel.innerHTML = '<option value="" selected disabled>Selecciona especialidad...</option>';
+                data.forEach(e => {
+                    sel.innerHTML += `<option value="${e.id}">${e.nombre}</option>`;
+                });
+            });
+
+        // Cargar Obras Sociales
+        fetch('backend/api/crud_obras_sociales.php')
+            .then(res => res.json())
+            .then(data => {
+                const sel = document.getElementById('turno-obra-social');
+                sel.innerHTML = '<option value="" selected disabled>Selecciona tu cobertura médica...</option>';
+                sel.innerHTML += '<option value="particular">Particular (Sin Obra Social)</option>';
+                data.forEach(o => {
+                    sel.innerHTML += `<option value="${o.id}">${o.nombre}</option>`;
+                });
+            });
+    });
+
+    // Cambio de Especialidad -> Cargar Médicos
+    document.getElementById('turno-especialidad').addEventListener('change', (e) => {
+        const espId = e.target.value;
+        const medicoSel = document.getElementById('turno-medico');
+        medicoSel.disabled = true;
+        medicoSel.innerHTML = '<option value="" selected disabled>Cargando profesionales...</option>';
+        
+        fetch(`backend/api/get_medicos.php?especialidad_id=${espId}`)
+            .then(res => res.json())
+            .then(data => {
+                medicoSel.innerHTML = '<option value="" selected disabled>Selecciona un profesional...</option>';
+                if(data.length > 0) {
+                    data.forEach(m => {
+                        const fullName = m.apellido ? `${m.nombre} ${m.apellido}` : m.nombre;
+                        medicoSel.innerHTML += `<option value="${m.id}">${fullName}</option>`;
+                    });
+                    medicoSel.disabled = false;
+                } else {
+                    medicoSel.innerHTML = '<option value="" selected disabled>No hay profesionales disponibles para esta especialidad.</option>';
+                }
+            });
     });
 }

@@ -34,22 +34,76 @@
                 <h1 class="h3 mb-2 fw-bold">Clínica Médica</h1>
                 <p class="text-muted mb-4">Ingresa a tu cuenta para gestionar tus turnos</p>
 
-                <!-- Email/Password Login -->
-                <form id="login-form">
-                    <div class="form-floating mb-3">
-                        <input type="email" class="form-control" id="email" placeholder="nombre@ejemplo.com" required>
-                        <label for="email"><i class="bi bi-envelope me-2"></i>Email</label>
-                    </div>
-                    <div class="form-floating mb-3">
-                        <input type="password" class="form-control" id="password" placeholder="Contraseña" required>
-                        <label for="password"><i class="bi bi-lock me-2"></i>Contraseña</label>
+                <!-- Tabs Login / Registro -->
+                <ul class="nav nav-pills mb-4 justify-content-center" id="pills-tab" role="tablist">
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link active rounded-pill px-4" id="pills-login-tab" data-bs-toggle="pill" data-bs-target="#pills-login" type="button" role="tab">Iniciar Sesión</button>
+                  </li>
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link rounded-pill px-4" id="pills-register-tab" data-bs-toggle="pill" data-bs-target="#pills-register" type="button" role="tab">Registrarse</button>
+                  </li>
+                </ul>
+
+                <div class="tab-content" id="pills-tabContent">
+                    <!-- LOGIN TAB -->
+                    <div class="tab-pane fade show active" id="pills-login" role="tabpanel">
+                        <form id="login-form">
+                            <div class="form-floating mb-3">
+                                <input type="email" class="form-control" id="login-email" placeholder="nombre@ejemplo.com" required>
+                                <label for="login-email"><i class="bi bi-envelope me-2"></i>Email</label>
+                            </div>
+                            <div class="form-floating mb-3">
+                                <input type="password" class="form-control" id="login-password" placeholder="Contraseña" required>
+                                <label for="login-password"><i class="bi bi-lock me-2"></i>Contraseña</label>
+                            </div>
+
+                            <button class="w-100 btn btn-lg btn-primary fw-semibold" type="submit">Iniciar Sesión</button>
+                            <div class="mt-3 text-center">
+                                <a href="#" id="forgot-password-link" class="text-decoration-none small">¿Olvidaste tu contraseña?</a>
+                            </div>
+                        </form>
                     </div>
 
-                    <button class="w-100 btn btn-lg btn-primary fw-semibold" type="submit">Iniciar Sesión</button>
-                    <div class="mt-3 text-center">
-                        <a href="#" id="forgot-password-link" class="text-decoration-none small">¿Olvidaste tu contraseña?</a>
+                    <!-- REGISTRO TAB -->
+                    <div class="tab-pane fade" id="pills-register" role="tabpanel">
+                        <form id="register-form">
+                            <div class="row g-2">
+                                <div class="col-md-6 form-floating mb-2">
+                                    <input type="text" class="form-control" id="reg-nombre" placeholder="Nombre" required>
+                                    <label for="reg-nombre">Nombre</label>
+                                </div>
+                                <div class="col-md-6 form-floating mb-2">
+                                    <input type="text" class="form-control" id="reg-apellido" placeholder="Apellido" required>
+                                    <label for="reg-apellido">Apellido</label>
+                                </div>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-md-6 form-floating mb-2">
+                                    <input type="number" class="form-control" id="reg-dni" placeholder="DNI sin puntos" required>
+                                    <label for="reg-dni">DNI</label>
+                                </div>
+                                <div class="col-md-6 form-floating mb-2">
+                                    <input type="date" class="form-control" id="reg-fecha-nac" required>
+                                    <label for="reg-fecha-nac">Fecha Nac.</label>
+                                </div>
+                            </div>
+                            <div class="form-floating mb-2">
+                                <input type="tel" class="form-control" id="reg-telefono" placeholder="Teléfono" required>
+                                <label for="reg-telefono">Teléfono</label>
+                            </div>
+                            <div class="form-floating mb-2">
+                                <input type="email" class="form-control" id="reg-email" placeholder="nombre@ejemplo.com" required>
+                                <label for="reg-email"><i class="bi bi-envelope me-2"></i>Email</label>
+                            </div>
+                            <div class="form-floating mb-3">
+                                <input type="password" class="form-control" id="reg-password" placeholder="Contraseña" required>
+                                <label for="reg-password"><i class="bi bi-lock me-2"></i>Crear Contraseña</label>
+                            </div>
+
+                            <button class="w-100 btn btn-lg btn-success fw-semibold" type="submit">Crear Cuenta</button>
+                        </form>
                     </div>
-                </form>
+                </div>
 
                 <div class="d-flex align-items-center my-4">
                     <hr class="flex-grow-1">

@@ -61,8 +61,13 @@
                         </a>
                     </li>
                     <li class="nav-item admin-only d-none">
-                        <a class="nav-link d-flex align-items-center" href="#" id="menu-medicos">
-                            <i class="bi bi-hospital me-2"></i> Gestión de Médicos
+                        <a class="nav-link d-flex align-items-center" href="#" id="menu-obras">
+                            <i class="bi bi-building me-2"></i> Obras Sociales
+                        </a>
+                    </li>
+                    <li class="nav-item admin-only d-none">
+                        <a class="nav-link d-flex align-items-center" href="#" id="menu-agenda-admin">
+                            <i class="bi bi-calendar-range me-2"></i> Agenda y Horarios
                         </a>
                     </li>
                     <li class="nav-item">
@@ -111,9 +116,14 @@
             <div id="content-usuarios" class="d-none">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-3 mb-4 border-bottom">
                     <h1 class="h2 fw-bold">Gestión de Usuarios</h1>
-                    <button class="btn btn-outline-primary shadow-sm rounded-pill" onclick="cargarUsuarios()">
-                        <i class="bi bi-arrow-clockwise me-1"></i> Refrescar
-                    </button>
+                    <div>
+                        <button class="btn btn-outline-primary shadow-sm rounded-pill me-2" onclick="cargarUsuarios()">
+                            <i class="bi bi-arrow-clockwise me-1"></i> Refrescar
+                        </button>
+                        <button class="btn btn-primary shadow-sm rounded-pill" data-bs-toggle="modal" data-bs-target="#modalCrearUsuario">
+                            <i class="bi bi-person-plus me-1"></i> Crear Personal
+                        </button>
+                    </div>
                 </div>
 
                 <div class="card border-0 shadow-sm rounded-4">
@@ -129,7 +139,6 @@
                                     </tr>
                                 </thead>
                                 <tbody id="tabla-usuarios">
-                                    <!-- Dynamic rows -->
                                     <tr>
                                         <td colspan="4" class="text-center py-4 text-muted">Cargando usuarios...</td>
                                     </tr>
@@ -137,6 +146,47 @@
                             </table>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- VISTA: OBRAS SOCIALES -->
+            <div id="content-obras" class="d-none">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-3 mb-4 border-bottom">
+                    <h1 class="h2 fw-bold">Obras Sociales</h1>
+                    <button class="btn btn-primary shadow-sm rounded-pill" data-bs-toggle="modal" data-bs-target="#modalCrearObra">
+                        <i class="bi bi-plus-lg me-1"></i> Nueva Obra Social
+                    </button>
+                </div>
+                <div class="card border-0 shadow-sm rounded-4">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-4">ID</th>
+                                        <th>Nombre (Obra Social - Plan)</th>
+                                        <th class="pe-4 text-end">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-obras">
+                                    <tr>
+                                        <td colspan="3" class="text-center py-4 text-muted">Cargando obras sociales...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VISTA: AGENDA ADMIN -->
+            <div id="content-agenda-admin" class="d-none">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-3 mb-4 border-bottom">
+                    <h1 class="h2 fw-bold">Gestión de Agenda</h1>
+                </div>
+                <div class="alert alert-warning rounded-4 shadow-sm border-0 d-flex align-items-center">
+                    <i class="bi bi-tools fs-4 me-3"></i>
+                    <div>Módulo de configuración de horarios y duración de consultas en desarrollo.</div>
                 </div>
             </div>
 
@@ -159,57 +209,88 @@
     </div>
 </div>
 
-<!-- Modal Solicitar Turno -->
+<!-- Modal Solicitar Turno (Docturno Style) -->
 <div class="modal fade" id="modalNuevoTurno" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content rounded-4 border-0 shadow">
       <div class="modal-header border-bottom-0 pb-0">
-        <h1 class="modal-title fs-5 fw-bold">Agendar Nuevo Turno</h1>
+        <h1 class="modal-title fs-5 fw-bold">Solicitar Turno</h1>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
         <form id="form-solicitar-turno">
-            <div class="mb-3">
-                <label class="form-label fw-semibold text-muted small">Especialidad</label>
-                <select class="form-select form-select-lg" required>
-                    <option value="" selected disabled>Selecciona una especialidad...</option>
-                    <option value="1">Kinesiología</option>
-                    <option value="2">Fonoaudiología</option>
-                    <option value="3">Medicina General</option>
-                </select>
-            </div>
-            <div class="mb-3">
-                <label class="form-label fw-semibold text-muted small">Médico</label>
-                <select class="form-select form-select-lg" required>
-                    <option value="" selected disabled>Selecciona un médico...</option>
-                    <!-- Se llenará vía JS en el futuro -->
-                </select>
-            </div>
-            <div class="mb-3">
-                <label class="form-label fw-semibold text-muted small">Obra Social</label>
-                <select class="form-select form-select-lg" required>
-                    <option value="" selected disabled>Selecciona tu obra social...</option>
-                    <option value="particular">Particular (Sin Obra Social)</option>
-                    <option value="osde">OSDE</option>
-                    <option value="swiss">Swiss Medical</option>
-                    <!-- Aquí se integrará el Excel de obras sociales -->
-                </select>
-            </div>
             <div class="row">
-                <div class="col-6 mb-3">
-                    <label class="form-label fw-semibold text-muted small">Fecha</label>
-                    <input type="date" class="form-control form-control-lg" required>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold text-muted small">Especialidad</label>
+                    <select class="form-select" id="turno-especialidad" required>
+                        <option value="" selected disabled>Selecciona especialidad...</option>
+                        <option value="1">Kinesiología</option>
+                        <option value="2">Fonoaudiología</option>
+                        <option value="3">Medicina General</option>
+                    </select>
                 </div>
-                <div class="col-6 mb-3">
-                    <label class="form-label fw-semibold text-muted small">Hora</label>
-                    <input type="time" class="form-control form-control-lg" required>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold text-muted small">Profesional</label>
+                    <select class="form-select" id="turno-medico" required disabled>
+                        <option value="" selected disabled>Primero selecciona especialidad...</option>
+                    </select>
                 </div>
             </div>
+            
+            <div class="mb-4">
+                <label class="form-label fw-semibold text-muted small">Cobertura Médica (Obra Social)</label>
+                <select class="form-select" id="turno-obra-social" required>
+                    <option value="" selected disabled>Cargando obras sociales...</option>
+                </select>
+            </div>
+
+            <!-- Grilla de Horarios (Placeholder) -->
+            <div class="border rounded p-3 bg-light text-center">
+                <p class="text-muted mb-0 small"><i class="bi bi-calendar-event me-2"></i>Selecciona las opciones superiores para ver los horarios disponibles.</p>
+            </div>
+            
         </form>
       </div>
       <div class="modal-footer border-top-0 pt-0">
         <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary rounded-pill px-4" onclick="alert('Funcionalidad de guardado en construcción.')">Confirmar Turno</button>
+        <button type="button" class="btn btn-primary rounded-pill px-4" disabled>Siguiente</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Crear Personal -->
+<div class="modal fade" id="modalCrearUsuario" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <div class="modal-header border-bottom-0 pb-0">
+        <h1 class="modal-title fs-5 fw-bold">Alta de Personal</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="form-crear-personal">
+            <div class="mb-3">
+                <input type="text" class="form-control" id="new-nombre" placeholder="Nombre completo" required>
+            </div>
+            <div class="mb-3">
+                <input type="email" class="form-control" id="new-email" placeholder="Correo Electrónico" required>
+            </div>
+            <div class="mb-3">
+                <select class="form-select" id="new-rol" required>
+                    <option value="" selected disabled>Seleccionar Rol...</option>
+                    <option value="recepcionista">Recepcionista</option>
+                    <option value="medico">Médico</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+            <div class="alert alert-info small py-2 mb-0">
+                <i class="bi bi-info-circle me-1"></i> El usuario deberá usar "Iniciar Sesión" y "Recuperar Contraseña" para establecer su clave inicial.
+            </div>
+        </form>
+      </div>
+      <div class="modal-footer border-top-0 pt-0">
+        <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary rounded-pill" onclick="crearPersonal()">Crear</button>
       </div>
     </div>
   </div>

@@ -10,8 +10,8 @@ function showError(message) {
     errorDiv.classList.remove('d-none');
 }
 
-function handleBackendLogin(user) {
-    // Enviar datos al backend PHP
+// Reutilizable para enviar datos extra al backend
+function handleBackendLogin(user, extraData = {}) {
     fetch(`${API_URL}/auth.php`, {
         method: 'POST',
         headers: {
@@ -20,13 +20,16 @@ function handleBackendLogin(user) {
         body: JSON.stringify({
             firebase_uid: user.uid,
             email: user.email,
-            nombre: user.displayName || user.email.split('@')[0]
+            nombre: extraData.nombre || user.displayName || user.email.split('@')[0],
+            apellido: extraData.apellido || "",
+            dni: extraData.dni || null,
+            fecha_nacimiento: extraData.fecha_nacimiento || null,
+            telefono: extraData.telefono || null
         })
     })
     .then(response => response.json())
     .then(data => {
         if(data.user) {
-            // Guardar datos en localStorage y redirigir al dashboard
             localStorage.setItem('user', JSON.stringify(data.user));
             window.location.href = 'dashboard.php';
         } else {
@@ -34,7 +37,6 @@ function handleBackendLogin(user) {
         }
     })
     .catch(error => {
-        console.error('Error:', error);
         showError('Ocurrió un error en el servidor.');
     });
 }
@@ -43,15 +45,41 @@ function handleBackendLogin(user) {
 if(loginForm) {
     loginForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
 
         auth.signInWithEmailAndPassword(email, password)
             .then((userCredential) => {
                 handleBackendLogin(userCredential.user);
             })
             .catch((error) => {
-                showError('Credenciales inválidas o error en Firebase: ' + error.message);
+                showError('Credenciales inválidas o error: ' + error.message);
+            });
+    });
+}
+
+// Registro Completo de Paciente
+const registerForm = document.getElementById('register-form');
+if(registerForm) {
+    registerForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        const extraData = {
+            nombre: document.getElementById('reg-nombre').value,
+            apellido: document.getElementById('reg-apellido').value,
+            dni: document.getElementById('reg-dni').value,
+            fecha_nacimiento: document.getElementById('reg-fecha-nac').value,
+            telefono: document.getElementById('reg-telefono').value
+        };
+        const email = document.getElementById('reg-email').value;
+        const password = document.getElementById('reg-password').value;
+
+        auth.createUserWithEmailAndPassword(email, password)
+            .then((userCredential) => {
+                handleBackendLogin(userCredential.user, extraData);
+            })
+            .catch((error) => {
+                showError('Error al crear cuenta: ' + error.message);
             });
     });
 }
@@ -61,6 +89,9 @@ if(googleLoginBtn) {
     googleLoginBtn.addEventListener('click', () => {
         auth.signInWithPopup(googleProvider)
             .then((result) => {
+                // El login de google no tiene DNI ni los otros campos en esta etapa,
+                // idealmente se debería redirigir a "Completar Perfil". 
+                // Por ahora se envía lo básico.
                 handleBackendLogin(result.user);
             })
             .catch((error) => {
