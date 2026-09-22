@@ -4,7 +4,8 @@
 ALTER TABLE usuarios 
     ADD COLUMN apellido VARCHAR(100) NULL AFTER nombre,
     ADD COLUMN dni VARCHAR(20) NULL UNIQUE AFTER apellido,
-    ADD COLUMN fecha_nacimiento DATE NULL AFTER dni;
+    ADD COLUMN fecha_nacimiento DATE NULL AFTER dni,
+    ADD COLUMN contrasena VARCHAR(255) NULL AFTER firebase_uid;
 
 -- 2. Asegurar que la tabla obras_sociales exista
 CREATE TABLE IF NOT EXISTS obras_sociales (

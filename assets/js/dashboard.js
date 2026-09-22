@@ -198,10 +198,11 @@ function crearPersonal() {
     const data = {
         nombre: document.getElementById('new-nombre').value,
         email: document.getElementById('new-email').value,
-        rol: document.getElementById('new-rol').value
+        rol: document.getElementById('new-rol').value,
+        password: document.getElementById('new-password').value
     };
 
-    if(!data.nombre || !data.email || !data.rol) {
+    if(!data.nombre || !data.email || !data.rol || !data.password) {
         alert("Todos los campos son obligatorios");
         btn.disabled = false;
         return;

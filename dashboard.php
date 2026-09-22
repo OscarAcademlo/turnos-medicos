@@ -283,8 +283,8 @@
                     <option value="admin">Admin</option>
                 </select>
             </div>
-            <div class="alert alert-info small py-2 mb-0">
-                <i class="bi bi-info-circle me-1"></i> El usuario deberá usar "Iniciar Sesión" y "Recuperar Contraseña" para establecer su clave inicial.
+            <div class="mb-3">
+                <input type="password" class="form-control" id="new-password" placeholder="Contraseña de Acceso" required>
             </div>
         </form>
       </div>

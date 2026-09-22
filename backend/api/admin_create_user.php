@@ -37,11 +37,16 @@ if(
         $apellido = !empty($data->apellido) ? $data->apellido : "";
         $dni = !empty($data->dni) ? $data->dni : null;
         $rol = $data->rol;
+        
+        $contrasena = null;
+        if (!empty($data->password)) {
+            $contrasena = password_hash($data->password, PASSWORD_BCRYPT);
+        }
 
         // Generar un UID temporal único
-        $temp_uid = "temp_" . uniqid();
+        $temp_uid = "local_" . uniqid();
 
-        $query = "INSERT INTO usuarios (firebase_uid, email, nombre, apellido, dni, rol) VALUES (:uid, :email, :nombre, :apellido, :dni, :rol)";
+        $query = "INSERT INTO usuarios (firebase_uid, email, nombre, apellido, dni, rol, contrasena) VALUES (:uid, :email, :nombre, :apellido, :dni, :rol, :contrasena)";
         $stmt = $db->prepare($query);
         $stmt->bindParam(":uid", $temp_uid);
         $stmt->bindParam(":email", $email);
@@ -49,6 +54,7 @@ if(
         $stmt->bindParam(":apellido", $apellido);
         $stmt->bindParam(":dni", $dni);
         $stmt->bindParam(":rol", $rol);
+        $stmt->bindParam(":contrasena", $contrasena);
 
         if($stmt->execute()) {
             http_response_code(201);

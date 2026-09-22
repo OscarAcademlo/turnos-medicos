@@ -48,13 +48,34 @@ if(loginForm) {
         const email = document.getElementById('login-email').value;
         const password = document.getElementById('login-password').value;
 
-        auth.signInWithEmailAndPassword(email, password)
-            .then((userCredential) => {
-                handleBackendLogin(userCredential.user);
-            })
-            .catch((error) => {
-                showError('Credenciales inválidas o error: ' + error.message);
-            });
+        // Autenticación Híbrida: Primero intentamos en el backend local (para médicos y recepcionistas)
+        fetch(`${API_URL}/db_login.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email, password: password })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "success") {
+                // Login local exitoso
+                localStorage.setItem('user', JSON.stringify(data.user));
+                window.location.href = 'dashboard.php';
+            } else if (data.status === "use_firebase") {
+                // El usuario no tiene contraseña local, intentar con Firebase
+                auth.signInWithEmailAndPassword(email, password)
+                    .then((userCredential) => {
+                        handleBackendLogin(userCredential.user);
+                    })
+                    .catch((error) => {
+                        showError('Credenciales inválidas o error: ' + error.message);
+                    });
+            } else {
+                showError(data.message || 'Error al iniciar sesión.');
+            }
+        })
+        .catch(error => {
+            showError('Ocurrió un error de conexión con el servidor.');
+        });
     });
 }
 
