@@ -7,11 +7,15 @@ header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers
 
 include_once '../config/database.php';
 
-// Verificar permisos (solo superadmin o admin)
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['rol'], ['superadmin', 'admin'])) {
-    http_response_code(403);
-    echo json_encode(array("message" => "Acceso denegado."));
-    exit();
+$method = $_SERVER['REQUEST_METHOD'];
+
+// Verificar permisos (solo superadmin o admin) para operaciones destructivas
+if ($method !== 'GET') {
+    if (!isset($_SESSION['user_id']) || !in_array($_SESSION['rol'], ['superadmin', 'admin'])) {
+        http_response_code(403);
+        echo json_encode(array("message" => "Acceso denegado."));
+        exit();
+    }
 }
 
 $database = new Database();
