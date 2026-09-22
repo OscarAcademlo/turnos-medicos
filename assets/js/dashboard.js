@@ -40,26 +40,42 @@ document.addEventListener('DOMContentLoaded', () => {
     // Lógica de navegación entre "pantallas"
     const menuDashboard = document.getElementById('menu-dashboard');
     const menuUsuarios = document.getElementById('menu-usuarios');
+    const menuTurnos = document.getElementById('menu-turnos');
     const contentDashboard = document.getElementById('content-dashboard');
     const contentUsuarios = document.getElementById('content-usuarios');
+    const contentTurnos = document.getElementById('content-turnos');
+
+    // Función auxiliar para cambiar vistas
+    function mostrarVista(vistaActiva, menuActivo, titulo) {
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        if(menuActivo) menuActivo.classList.add('active');
+        
+        contentDashboard.classList.add('d-none');
+        contentUsuarios.classList.add('d-none');
+        if(contentTurnos) contentTurnos.classList.add('d-none');
+        
+        if(vistaActiva) vistaActiva.classList.remove('d-none');
+        document.getElementById('page-title').textContent = titulo;
+    }
 
     // Lógica de Vistas (Navegación Sidebar)
     menuDashboard.addEventListener('click', (e) => {
         e.preventDefault();
-        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-        menuDashboard.classList.add('active');
-        contentDashboard.classList.remove('d-none');
-        contentUsuarios.classList.add('d-none');
+        mostrarVista(contentDashboard, menuDashboard, `Bienvenido, ${user.nombre}`);
     });
 
     if(menuUsuarios) {
         menuUsuarios.addEventListener('click', (e) => {
             e.preventDefault();
-            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-            menuUsuarios.classList.add('active');
-            contentDashboard.classList.add('d-none');
-            contentUsuarios.classList.remove('d-none');
+            mostrarVista(contentUsuarios, menuUsuarios, 'Gestión de Usuarios');
             cargarUsuarios();
+        });
+    }
+
+    if(menuTurnos) {
+        menuTurnos.addEventListener('click', (e) => {
+            e.preventDefault();
+            mostrarVista(contentTurnos, menuTurnos, 'Mis Turnos');
         });
     }
 

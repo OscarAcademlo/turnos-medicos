@@ -140,8 +140,79 @@
                 </div>
             </div>
 
+            <!-- VISTA: MIS TURNOS -->
+            <div id="content-turnos" class="d-none">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-3 mb-4 border-bottom">
+                    <h1 class="h2 fw-bold">Mis Turnos</h1>
+                    <button class="btn btn-primary shadow-sm rounded-pill" data-bs-toggle="modal" data-bs-target="#modalNuevoTurno">
+                        <i class="bi bi-plus-lg me-1"></i> Solicitar Turno
+                    </button>
+                </div>
+
+                <div class="alert alert-info rounded-4 shadow-sm border-0 d-flex align-items-center" role="alert">
+                    <i class="bi bi-info-circle-fill fs-4 me-3"></i>
+                    <div>Todavía no tienes turnos programados. Haz clic en "Solicitar Turno" para agendar uno.</div>
+                </div>
+            </div>
+
         </main>
     </div>
+</div>
+
+<!-- Modal Solicitar Turno -->
+<div class="modal fade" id="modalNuevoTurno" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <div class="modal-header border-bottom-0 pb-0">
+        <h1 class="modal-title fs-5 fw-bold">Agendar Nuevo Turno</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="form-solicitar-turno">
+            <div class="mb-3">
+                <label class="form-label fw-semibold text-muted small">Especialidad</label>
+                <select class="form-select form-select-lg" required>
+                    <option value="" selected disabled>Selecciona una especialidad...</option>
+                    <option value="1">Kinesiología</option>
+                    <option value="2">Fonoaudiología</option>
+                    <option value="3">Medicina General</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold text-muted small">Médico</label>
+                <select class="form-select form-select-lg" required>
+                    <option value="" selected disabled>Selecciona un médico...</option>
+                    <!-- Se llenará vía JS en el futuro -->
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold text-muted small">Obra Social</label>
+                <select class="form-select form-select-lg" required>
+                    <option value="" selected disabled>Selecciona tu obra social...</option>
+                    <option value="particular">Particular (Sin Obra Social)</option>
+                    <option value="osde">OSDE</option>
+                    <option value="swiss">Swiss Medical</option>
+                    <!-- Aquí se integrará el Excel de obras sociales -->
+                </select>
+            </div>
+            <div class="row">
+                <div class="col-6 mb-3">
+                    <label class="form-label fw-semibold text-muted small">Fecha</label>
+                    <input type="date" class="form-control form-control-lg" required>
+                </div>
+                <div class="col-6 mb-3">
+                    <label class="form-label fw-semibold text-muted small">Hora</label>
+                    <input type="time" class="form-control form-control-lg" required>
+                </div>
+            </div>
+        </form>
+      </div>
+      <div class="modal-footer border-top-0 pt-0">
+        <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary rounded-pill px-4" onclick="alert('Funcionalidad de guardado en construcción.')">Confirmar Turno</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Botón Flotante de WhatsApp -->
