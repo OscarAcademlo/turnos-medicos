@@ -1,98 +1,186 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Administración - Turnos Médicos</title>
+    <title>Dashboard - Clínica Médica</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <!-- Custom CSS con Cache Busting -->
     <link href="assets/css/style.css?v=<?php echo filemtime('assets/css/style.css'); ?>" rel="stylesheet">
 </head>
-<body>
+<body class="bg-body-tertiary">
+
+<!-- Navbar Superior -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top shadow-sm">
+    <div class="container-fluid px-4">
+        <a class="navbar-brand d-flex align-items-center fw-bold" href="#">
+            <i class="bi bi-heart-pulse-fill me-2 fs-4"></i> Clínica Médica
+        </a>
+        
+        <!-- Controles derecha -->
+        <div class="d-flex align-items-center gap-3">
+            <!-- Theme Toggle -->
+            <button class="btn btn-sm btn-outline-light rounded-circle" id="theme-toggle">
+                <i class="bi bi-moon-fill"></i>
+            </button>
+            
+            <div class="dropdown text-end">
+                <a href="#" class="d-block link-light text-decoration-none dropdown-toggle" id="dropdownUser" data-bs-toggle="dropdown" aria-expanded="false">
+                    <img src="https://ui-avatars.com/api/?name=Usuario&background=random" id="user-avatar" alt="mdo" width="32" height="32" class="rounded-circle">
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="dropdownUser">
+                    <li><h6 class="dropdown-header" id="user-name-display">Cargando...</h6></li>
+                    <li><span class="dropdown-item-text badge bg-info text-dark mx-3 mb-2" id="user-role-display">ROL</span></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="#" id="logout-btn"><i class="bi bi-box-arrow-right me-2"></i>Cerrar Sesión</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</nav>
 
 <div class="container-fluid">
     <div class="row">
         <!-- Sidebar -->
-        <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-white sidebar collapse">
-            <div class="position-sticky pt-3">
-                <div class="text-center mb-4 mt-2">
-                    <h5>Clínica Médica</h5>
-                    <small class="text-muted" id="user-role-display">Rol</small>
-                </div>
-                <ul class="nav flex-column" id="nav-menu">
+        <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+            <div class="position-sticky pt-4 px-2">
+                <ul class="nav flex-column gap-1" id="nav-menu">
                     <li class="nav-item">
-                        <a class="nav-link active" href="#" id="menu-dashboard">
-                            Dashboard
+                        <a class="nav-link active d-flex align-items-center" href="#" id="menu-dashboard">
+                            <i class="bi bi-house-door me-2"></i> Inicio
                         </a>
                     </li>
                     <li class="nav-item admin-only d-none">
-                        <a class="nav-link" href="#" id="menu-usuarios">
-                            Gestión de Usuarios
+                        <a class="nav-link d-flex align-items-center" href="#" id="menu-usuarios">
+                            <i class="bi bi-people me-2"></i> Gestión de Usuarios
                         </a>
                     </li>
                     <li class="nav-item admin-only d-none">
-                        <a class="nav-link" href="#" id="menu-medicos">
-                            Gestión de Médicos
+                        <a class="nav-link d-flex align-items-center" href="#" id="menu-medicos">
+                            <i class="bi bi-hospital me-2"></i> Gestión de Médicos
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" id="menu-turnos">
-                            Mis Turnos
+                        <a class="nav-link d-flex align-items-center" href="#" id="menu-turnos">
+                            <i class="bi bi-calendar-check me-2"></i> Mis Turnos
                         </a>
                     </li>
                 </ul>
-                <div class="mt-5 px-3">
-                    <button id="logout-btn" class="btn btn-outline-danger w-100">Cerrar Sesión</button>
-                </div>
             </div>
         </nav>
 
         <!-- Contenido Principal -->
         <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
-            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                <h1 class="h2" id="page-title">Bienvenido, <span id="user-name-display"></span></h1>
-            </div>
-
-            <!-- Contenedores Dinámicos -->
+            
+            <!-- VISTA: INICIO / DASHBOARD -->
             <div id="content-dashboard">
-                <div class="row">
-                    <div class="col-md-4 mb-4">
-                        <div class="card text-white bg-primary">
-                            <div class="card-body">
-                                <h5 class="card-title">Turnos Hoy</h5>
-                                <p class="card-text fs-2">0</p>
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-3 mb-4 border-bottom">
+                    <h1 class="h2 fw-bold">Resumen General</h1>
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-12 col-md-4">
+                        <div class="card border-0 shadow-sm h-100 rounded-4 overflow-hidden">
+                            <div class="card-body p-4 bg-primary text-white position-relative">
+                                <h5 class="card-title fw-normal opacity-75">Próximos Turnos</h5>
+                                <p class="card-text display-4 fw-bold mb-0">0</p>
+                                <i class="bi bi-calendar-event position-absolute" style="font-size: 5rem; right: -10px; bottom: -20px; opacity: 0.2;"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-12 col-md-8">
+                        <div class="card border-0 shadow-sm h-100 rounded-4">
+                            <div class="card-body p-4 d-flex flex-column justify-content-center align-items-center text-center">
+                                <i class="bi bi-calendar-plus text-primary mb-3" style="font-size: 3rem;"></i>
+                                <h4>¿Necesitas atención médica?</h4>
+                                <p class="text-muted">Agenda tu cita con nuestros especialistas rápidamente.</p>
+                                <button class="btn btn-primary px-4 rounded-pill" onclick="document.getElementById('menu-turnos').click()">Solicitar Turno</button>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
+            <!-- VISTA: GESTIÓN DE USUARIOS -->
             <div id="content-usuarios" class="d-none">
-                <h3>Gestión de Usuarios</h3>
-                <p>Solo Superadmin y Recepcionistas pueden ver esto.</p>
-                <button class="btn btn-sm btn-primary mb-3" onclick="cargarUsuarios()">Refrescar Lista</button>
-                <div class="table-responsive">
-                    <table class="table table-striped table-sm">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Nombre</th>
-                                <th>Email</th>
-                                <th>Rol Actual</th>
-                                <th>Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabla-usuarios">
-                            <!-- Los usuarios se llenarán con JS -->
-                        </tbody>
-                    </table>
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-3 mb-4 border-bottom">
+                    <h1 class="h2 fw-bold">Gestión de Usuarios</h1>
+                    <button class="btn btn-outline-primary shadow-sm rounded-pill" onclick="cargarUsuarios()">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Refrescar
+                    </button>
+                </div>
+
+                <div class="card border-0 shadow-sm rounded-4">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-4">Usuario</th>
+                                        <th>Email</th>
+                                        <th>Rol Actual</th>
+                                        <th class="pe-4">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-usuarios">
+                                    <!-- Dynamic rows -->
+                                    <tr>
+                                        <td colspan="4" class="text-center py-4 text-muted">Cargando usuarios...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
 
         </main>
     </div>
 </div>
+
+<!-- Botón Flotante de WhatsApp -->
+<a href="https://wa.me/5491112345678" target="_blank" class="whatsapp-float shadow-lg" title="Contactar a Recepción">
+    <i class="bi bi-whatsapp"></i>
+</a>
+
+<!-- Scripts UI Basicos -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Theme Toggle Logic
+    const themeToggle = document.getElementById('theme-toggle');
+    const icon = themeToggle.querySelector('i');
+    const htmlElement = document.documentElement;
+    
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    htmlElement.setAttribute('data-bs-theme', savedTheme);
+    updateIcon(savedTheme);
+
+    themeToggle.addEventListener('click', () => {
+        const currentTheme = htmlElement.getAttribute('data-bs-theme');
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        htmlElement.setAttribute('data-bs-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+        updateIcon(newTheme);
+    });
+
+    function updateIcon(theme) {
+        if(theme === 'dark') {
+            icon.classList.remove('bi-moon-fill');
+            icon.classList.add('bi-sun-fill');
+            icon.style.color = '#ffc107';
+        } else {
+            icon.classList.remove('bi-sun-fill');
+            icon.classList.add('bi-moon-fill');
+            icon.style.color = 'inherit';
+        }
+    }
+</script>
 
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
