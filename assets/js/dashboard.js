@@ -7,6 +7,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
+    // Variable global para usar en la vista
+    let user = JSON.parse(userJson);
+
     // Consultar al servidor por los datos MÁS RECIENTES (incluyendo el rol actualizado)
     fetch('backend/api/me.php')
         .then(res => {
@@ -14,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return res.json();
         })
         .then(data => {
-            const user = data.user;
+            user = data.user;
             // Actualizar localStorage con el nuevo rol
             localStorage.setItem('user', JSON.stringify(user));
             
@@ -40,30 +43,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const contentDashboard = document.getElementById('content-dashboard');
     const contentUsuarios = document.getElementById('content-usuarios');
 
+    // Lógica de Vistas (Navegación Sidebar)
     menuDashboard.addEventListener('click', (e) => {
         e.preventDefault();
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        menuDashboard.classList.add('active');
         contentDashboard.classList.remove('d-none');
         contentUsuarios.classList.add('d-none');
-        // actualizar UI activa
-        document.querySelectorAll('.nav-link').forEach(nav => nav.classList.remove('active'));
-        menuDashboard.classList.add('active');
     });
 
     if(menuUsuarios) {
         menuUsuarios.addEventListener('click', (e) => {
             e.preventDefault();
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            menuUsuarios.classList.add('active');
             contentDashboard.classList.add('d-none');
             contentUsuarios.classList.remove('d-none');
-            // actualizar UI activa
-            document.querySelectorAll('.nav-link').forEach(nav => nav.classList.remove('active'));
-            menuUsuarios.classList.add('active');
-            
             cargarUsuarios();
         });
     }
 
     // Lógica Cerrar Sesión
-    document.getElementById('logout-btn').addEventListener('click', () => {
+    document.getElementById('logout-btn').addEventListener('click', (e) => {
+        e.preventDefault();
         auth.signOut().then(() => {
             localStorage.removeItem('user');
             window.location.href = 'index.php';
@@ -71,52 +73,81 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// Función para llamar al backend PHP (GET a /api/users.php)
+// Función para cargar usuarios desde la base de datos
 function cargarUsuarios() {
-    const API_URL = 'backend/api';
-    
-    fetch(`${API_URL}/users.php`)
-        .then(response => {
-            if(response.status === 403) throw new Error('No tienes permisos');
-            return response.json();
-        })
-        .then(usuarios => {
-            const tbody = document.getElementById('tabla-usuarios');
-            tbody.innerHTML = ''; // Limpiar tabla
+    const user = JSON.parse(localStorage.getItem('user'));
+    const tbody = document.getElementById('tabla-usuarios');
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Cargando...</td></tr>';
+
+    fetch('backend/api/get_users.php')
+        .then(res => res.json())
+        .then(data => {
+            tbody.innerHTML = '';
             
-            usuarios.forEach(u => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${u.id}</td>
-                    <td>${u.nombre}</td>
-                    <td>${u.email}</td>
-                    <td><span class="badge bg-secondary">${u.rol}</span></td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary" onclick="cambiarRol(${u.id}, 'medico')">Hacer Médico</button>
-                        <button class="btn btn-sm btn-outline-warning" onclick="cambiarRol(${u.id}, 'recepcionista')">Hacer Recepcionista</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
+            if(data.usuarios) {
+                data.usuarios.forEach(u => {
+                    // Solo SuperAdmin puede cambiar roles y no a sí mismo
+                    const puedeCambiarRol = user.rol === 'superadmin' && u.id !== user.id;
+                    
+                    const selectRol = puedeCambiarRol ? `
+                        <select class="form-select form-select-sm" style="width: auto;" onchange="cambiarRol(${u.id}, this.value)">
+                            <option value="paciente" ${u.rol==='paciente'?'selected':''}>Paciente</option>
+                            <option value="medico" ${u.rol==='medico'?'selected':''}>Médico</option>
+                            <option value="recepcionista" ${u.rol==='recepcionista'?'selected':''}>Recepcionista</option>
+                            <option value="admin" ${u.rol==='admin'?'selected':''}>Administrador</option>
+                            <option value="superadmin" ${u.rol==='superadmin'?'selected':''}>SuperAdmin</option>
+                        </select>
+                    ` : `<span class="badge bg-secondary">${u.rol.toUpperCase()}</span>`;
+
+                    const row = `
+                        <tr>
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center">
+                                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px; font-weight: bold;">
+                                        ${u.nombre.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold">${u.nombre}</div>
+                                        <div class="text-muted small">ID: ${u.id}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>${u.email}</td>
+                            <td>${selectRol}</td>
+                            <td class="pe-4">
+                                <button class="btn btn-sm btn-outline-info rounded-circle" title="Detalles"><i class="bi bi-eye"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+            } else {
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">${data.message || 'Error al cargar'}</td></tr>`;
+            }
         })
         .catch(err => {
-            alert('Error cargando usuarios: ' + err.message);
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Error de conexión</td></tr>`;
         });
 }
 
-function cambiarRol(idUsuario, nuevoRol) {
-    if(!confirm(`¿Seguro que quieres cambiar el rol a ${nuevoRol}?`)) return;
-
-    const API_URL = 'backend/api';
-    fetch(`${API_URL}/users.php`, {
-        method: 'PUT',
+function cambiarRol(userId, nuevoRol) {
+    if(!confirm(`¿Estás seguro de cambiar el rol a ${nuevoRol}?`)) {
+        cargarUsuarios(); // revertir visualmente
+        return;
+    }
+    
+    fetch('backend/api/update_user_role.php', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: idUsuario, rol: nuevoRol })
+        body: JSON.stringify({ usuario_id: userId, nuevo_rol: nuevoRol })
     })
     .then(res => res.json())
     .then(data => {
         alert(data.message);
-        cargarUsuarios(); // Refrescar la tabla
+        cargarUsuarios();
     })
-    .catch(err => alert('Error: ' + err));
+    .catch(err => {
+        alert("Error al cambiar rol.");
+        cargarUsuarios();
+    });
 }
