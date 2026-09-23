@@ -139,9 +139,25 @@
             <div id="content-usuarios" class="d-none">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-3 mb-4 border-bottom">
                     <h1 class="h2 fw-bold">Gestión de Usuarios</h1>
-                    <div>
-                        <button class="btn btn-outline-primary shadow-sm rounded-pill me-2" onclick="cargarUsuarios()">
-                            <i class="bi bi-arrow-clockwise me-1"></i> Refrescar
+                    <div class="d-flex gap-2 align-items-center flex-wrap">
+                        <div class="input-group" style="width: 250px;">
+                            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control" id="search-usuarios" placeholder="Buscar usuario...">
+                        </div>
+                        <select class="form-select" id="filter-rol-usuarios" style="width: 200px;">
+                            <option value="todos">Todos</option>
+                            <optgroup label="Roles de Sistema">
+                                <option value="admin">Admin</option>
+                                <option value="recepcionista">Recepcionista</option>
+                                <option value="paciente">Paciente</option>
+                            </optgroup>
+                            <optgroup label="Especialidades (Médicos)" id="filter-especialidades-opts">
+                                <option value="medico">Todos los Médicos</option>
+                                <!-- Se cargarán dinámicamente -->
+                            </optgroup>
+                        </select>
+                        <button class="btn btn-outline-secondary shadow-sm rounded-pill" data-bs-toggle="modal" data-bs-target="#modalEspecialidades">
+                            <i class="bi bi-tags me-1"></i> Categorías
                         </button>
                         <button class="btn btn-primary shadow-sm rounded-pill" data-bs-toggle="modal" data-bs-target="#modalCrearUsuario">
                             <i class="bi bi-person-plus me-1"></i> Crear Personal
@@ -236,6 +252,10 @@
             <div id="content-medicos" class="d-none">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-3 mb-4 border-bottom">
                     <h1 class="h2 fw-bold">Gestión de Médicos</h1>
+                    <div class="input-group" style="max-width: 300px;">
+                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="search-medicos" placeholder="Buscar médico...">
+                    </div>
                 </div>
                 <div class="row g-4" id="medicos-container">
                     <div class="col-12 text-center text-muted py-5">
@@ -425,10 +445,48 @@
   </div>
 </div>
 
-<!-- Botón Flotante de WhatsApp -->
-<a href="https://wa.me/5491112345678" target="_blank" class="whatsapp-float shadow-lg" title="Contactar a Recepción">
-    <i class="bi bi-whatsapp"></i>
-</a>
+<!-- Modal Gestión de Especialidades (Categorías de Usuarios) -->
+<div class="modal fade" id="modalEspecialidades" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <div class="modal-header border-bottom-0 pb-0">
+        <h1 class="modal-title fs-5 fw-bold">Categorías de Usuarios (Especialidades)</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        
+        <!-- Formulario para agregar especialidad -->
+        <form id="form-crear-especialidad" class="mb-4">
+            <div class="input-group">
+                <input type="text" class="form-control" id="new-especialidad-nombre" placeholder="Nombre de la nueva categoría (ej. Kinesiólogo)" required>
+                <button class="btn btn-primary" type="submit"><i class="bi bi-plus"></i> Añadir</button>
+            </div>
+        </form>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="especialidades-table">
+                <thead class="table-light">
+                    <tr>
+                        <th>Categoría / Especialidad</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-especialidades">
+                    <tr>
+                        <td colspan="2" class="text-center py-3 text-muted">Cargando categorías...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+      </div>
+      <div class="modal-footer border-top-0 pt-0">
+        <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
 
 <!-- Scripts UI Basicos -->
 <!-- Modal Editar Médico -->

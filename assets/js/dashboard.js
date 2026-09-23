@@ -114,6 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             mostrarVista(contentUsuarios, menuUsuarios, 'Gestión de Usuarios');
             cargarUsuarios();
+            cargarEspecialidades();
         });
     }
 
@@ -262,6 +263,9 @@ function cargarMisTurnos() {
         });
 }
 
+let usuariosDisponibles = [];
+let especialidadesDisponibles = [];
+
 // Función para cargar usuarios desde la base de datos
 function cargarUsuarios() {
     const user = JSON.parse(localStorage.getItem('user'));
@@ -271,45 +275,9 @@ function cargarUsuarios() {
     fetch('backend/api/get_users.php')
         .then(res => res.json())
         .then(data => {
-            tbody.innerHTML = '';
-            
             if(data.usuarios) {
-                data.usuarios.forEach(u => {
-                    // Solo SuperAdmin puede cambiar roles y no a sí mismo
-                    const puedeCambiarRol = user.rol === 'superadmin' && u.id !== user.id;
-                    
-                    const selectRol = puedeCambiarRol ? `
-                        <select class="form-select form-select-sm" style="width: auto;" onchange="cambiarRol(${u.id}, this.value)">
-                            <option value="paciente" ${u.rol==='paciente'?'selected':''}>Paciente</option>
-                            <option value="medico" ${u.rol==='medico'?'selected':''}>Médico</option>
-                            <option value="recepcionista" ${u.rol==='recepcionista'?'selected':''}>Recepcionista</option>
-                            <option value="admin" ${u.rol==='admin'?'selected':''}>Administrador</option>
-                            <option value="superadmin" ${u.rol==='superadmin'?'selected':''}>SuperAdmin</option>
-                        </select>
-                    ` : `<span class="badge bg-secondary">${u.rol.toUpperCase()}</span>`;
-
-                    const row = `
-                        <tr>
-                            <td class="ps-4">
-                                <div class="d-flex align-items-center">
-                                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px; font-weight: bold;">
-                                        ${u.nombre.charAt(0).toUpperCase()}
-                                    </div>
-                                    <div>
-                                        <div class="fw-bold">${u.nombre}</div>
-                                        <div class="text-muted small">ID: ${u.id}</div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>${u.email}</td>
-                            <td>${selectRol}</td>
-                            <td class="pe-4">
-                                <button class="btn btn-sm btn-outline-info rounded-circle" title="Detalles"><i class="bi bi-eye"></i></button>
-                            </td>
-                        </tr>
-                    `;
-                    tbody.innerHTML += row;
-                });
+                usuariosDisponibles = data.usuarios;
+                renderUsuarios(usuariosDisponibles);
             } else {
                 tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">${data.message || 'Error al cargar'}</td></tr>`;
             }
@@ -317,6 +285,171 @@ function cargarUsuarios() {
         .catch(err => {
             tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Error de conexión</td></tr>`;
         });
+}
+
+function renderUsuarios(usuarios) {
+    const user = JSON.parse(localStorage.getItem('user'));
+    const tbody = document.getElementById('tabla-usuarios');
+    tbody.innerHTML = '';
+    
+    if(usuarios.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No se encontraron usuarios.</td></tr>';
+        return;
+    }
+
+    usuarios.forEach(u => {
+        // Solo SuperAdmin puede cambiar roles y no a sí mismo
+        const puedeCambiarRol = user.rol === 'superadmin' && u.id !== user.id;
+        
+        let rolHtml = '';
+        if(puedeCambiarRol) {
+            rolHtml = `
+                <select class="form-select form-select-sm" style="width: auto;" onchange="cambiarRol(${u.id}, this.value)">
+                    <option value="paciente" ${u.rol==='paciente'?'selected':''}>Paciente</option>
+                    <option value="medico" ${u.rol==='medico'?'selected':''}>Médico</option>
+                    <option value="recepcionista" ${u.rol==='recepcionista'?'selected':''}>Recepcionista</option>
+                    <option value="admin" ${u.rol==='admin'?'selected':''}>Administrador</option>
+                    <option value="superadmin" ${u.rol==='superadmin'?'selected':''}>SuperAdmin</option>
+                </select>
+            `;
+        } else {
+            rolHtml = `<span class="badge bg-secondary">${u.rol.toUpperCase()}</span>`;
+        }
+
+        const espBadge = u.especialidad_nombre ? `<span class="badge bg-info text-dark ms-2">${u.especialidad_nombre}</span>` : '';
+
+        const row = `
+            <tr>
+                <td class="ps-4">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px; font-weight: bold;">
+                            ${u.nombre.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <div class="fw-bold">${u.nombre} ${espBadge}</div>
+                            <div class="text-muted small">ID: ${u.id}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>${u.email}</td>
+                <td>${rolHtml}</td>
+                <td class="pe-4">
+                    <button class="btn btn-sm btn-outline-danger rounded-circle" onclick="borrarUsuario(${u.id})" title="Eliminar"><i class="bi bi-trash"></i></button>
+                </td>
+            </tr>
+        `;
+        tbody.innerHTML += row;
+    });
+}
+
+function filtrarUsuarios() {
+    const searchVal = document.getElementById('search-usuarios').value.toLowerCase();
+    const rolVal = document.getElementById('filter-rol-usuarios').value;
+
+    const filtrados = usuariosDisponibles.filter(u => {
+        const matchesSearch = u.nombre.toLowerCase().includes(searchVal) || u.email.toLowerCase().includes(searchVal);
+        let matchesRol = true;
+        
+        if (rolVal !== 'todos') {
+            if (rolVal.startsWith('esp_')) {
+                const espId = rolVal.split('_')[1];
+                matchesRol = (u.rol === 'medico' && u.especialidad_id == espId);
+            } else if (rolVal === 'medico') {
+                matchesRol = (u.rol === 'medico');
+            } else {
+                matchesRol = (u.rol === rolVal);
+            }
+        }
+        
+        return matchesSearch && matchesRol;
+    });
+
+    renderUsuarios(filtrados);
+}
+
+document.getElementById('search-usuarios')?.addEventListener('input', filtrarUsuarios);
+document.getElementById('filter-rol-usuarios')?.addEventListener('change', filtrarUsuarios);
+
+function borrarUsuario(id) {
+    if(!confirm('¿Estás seguro de eliminar este usuario?')) return;
+    // Falta implementar API de borrar usuario, simulamos por ahora
+    alert("Función eliminar usuario en desarrollo.");
+}
+
+// ==========================================
+// GESTIÓN DE ESPECIALIDADES (CATEGORÍAS)
+// ==========================================
+function cargarEspecialidades() {
+    fetch('backend/api/get_especialidades.php')
+        .then(res => res.json())
+        .then(data => {
+            especialidadesDisponibles = data;
+            const tbody = document.getElementById('tabla-especialidades');
+            const selectFilter = document.getElementById('filter-especialidades-opts');
+            
+            tbody.innerHTML = '';
+            
+            // Llenar tabla de modal
+            if(data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted">No hay categorías.</td></tr>';
+            } else {
+                data.forEach(esp => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${esp.nombre}</td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-danger" onclick="borrarEspecialidad(${esp.id})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            // Llenar select de filtro de usuarios
+            if(selectFilter) {
+                selectFilter.innerHTML = '<option value="medico">Todos los Médicos</option>';
+                data.forEach(esp => {
+                    selectFilter.innerHTML += `<option value="esp_${esp.id}">${esp.nombre}</option>`;
+                });
+            }
+        });
+}
+
+document.getElementById('form-crear-especialidad')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const nombre = document.getElementById('new-especialidad-nombre').value;
+    
+    fetch('backend/api/crud_especialidades.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ nombre })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        document.getElementById('new-especialidad-nombre').value = '';
+        cargarEspecialidades();
+        cargarUsuarios(); // Refrescar por si impacta algo
+    })
+    .catch(err => alert('Error al crear especialidad'));
+});
+
+function borrarEspecialidad(id) {
+    if(!confirm('¿Seguro que deseas eliminar esta categoría?')) return;
+    
+    fetch('backend/api/crud_especialidades.php', {
+        method: 'DELETE',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ id })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        cargarEspecialidades();
+    })
+    .catch(err => alert('Error al eliminar'));
 }
 
 function cambiarRol(userId, nuevoRol) {
@@ -756,40 +889,58 @@ function cargarMedicosAdmin() {
         medicosDisponibles = medicos;
         obrasSocialesDisponibles = obras;
         
-        container.innerHTML = '';
-        if(medicos.length === 0) {
-            container.innerHTML = '<div class="col-12"><div class="alert alert-info">No hay médicos registrados.</div></div>';
-            return;
-        }
-
-        medicos.forEach(med => {
-            const foto = med.foto_perfil || 'assets/images/default-avatar.png';
-            const html = `
-                <div class="col-md-6 col-lg-4">
-                    <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden position-relative">
-                        <div class="card-body p-4 text-center">
-                            <img src="${foto}" class="rounded-circle mb-3 object-fit-cover" width="100" height="100" style="border: 3px solid #e9ecef;">
-                            <h5 class="fw-bold mb-1">Dr/a. ${med.nombre} ${med.apellido}</h5>
-                            <p class="text-muted small mb-3">Matrícula: ${med.matricula || 'No especificada'}</p>
-                            
-                            <div class="d-grid gap-2">
-                                <button class="btn btn-outline-primary btn-sm rounded-pill" onclick="abrirEditMedico(${med.id})">
-                                    <i class="bi bi-pencil-square me-1"></i> Editar Perfil
-                                </button>
-                                <button class="btn btn-outline-success btn-sm rounded-pill" onclick="abrirCoberturasMedico(${med.id})">
-                                    <i class="bi bi-shield-check me-1"></i> Coberturas (${med.planes ? med.planes.length : 0})
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            container.innerHTML += html;
-        });
+        renderMedicos(medicosDisponibles);
     }).catch(err => {
         container.innerHTML = '<div class="col-12"><div class="alert alert-danger">Error cargando datos.</div></div>';
     });
 }
+
+function renderMedicos(medicos) {
+    const container = document.getElementById('medicos-container');
+    container.innerHTML = '';
+    
+    if(medicos.length === 0) {
+        container.innerHTML = '<div class="col-12"><div class="alert alert-info">No hay médicos que coincidan con la búsqueda.</div></div>';
+        return;
+    }
+
+    medicos.forEach(med => {
+        const foto = med.foto_perfil || 'assets/images/default-avatar.png';
+        const html = `
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden position-relative">
+                    <div class="card-body p-4 text-center">
+                        <img src="${foto}" class="rounded-circle mb-3 object-fit-cover" width="100" height="100" style="border: 3px solid #e9ecef;">
+                        <h5 class="fw-bold mb-1">Dr/a. ${med.nombre} ${med.apellido}</h5>
+                        <p class="text-muted small mb-1">${med.especialidad_nombre || 'Sin especialidad'}</p>
+                        <p class="text-muted small mb-3">Matrícula: ${med.matricula || 'No especificada'}</p>
+                        
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-primary btn-sm rounded-pill" onclick="abrirEditMedico(${med.id})">
+                                <i class="bi bi-pencil-square me-1"></i> Editar Perfil
+                            </button>
+                            <button class="btn btn-outline-success btn-sm rounded-pill" onclick="abrirCoberturasMedico(${med.id})">
+                                <i class="bi bi-shield-check me-1"></i> Coberturas (${med.planes ? med.planes.length : 0})
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.innerHTML += html;
+    });
+}
+
+// Búsqueda de Médicos
+document.getElementById('search-medicos')?.addEventListener('input', (e) => {
+    const query = e.target.value.toLowerCase();
+    const filtrados = medicosDisponibles.filter(m => {
+        const nombreCompleto = `${m.nombre} ${m.apellido}`.toLowerCase();
+        const especialidad = (m.especialidad_nombre || '').toLowerCase();
+        return nombreCompleto.includes(query) || especialidad.includes(query);
+    });
+    renderMedicos(filtrados);
+});
 
 function abrirEditMedico(id) {
     const med = medicosDisponibles.find(m => m.id == id);

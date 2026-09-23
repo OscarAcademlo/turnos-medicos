@@ -15,7 +15,14 @@ $database = new Database();
 $db = $database->getConnection();
 
 try {
-    $query = "SELECT id, nombre, email, rol, telefono, creado_en FROM usuarios ORDER BY creado_en DESC";
+    $query = "
+        SELECT u.id, u.nombre, u.email, u.rol, u.telefono, u.creado_en, 
+               e.id as especialidad_id, e.nombre as especialidad_nombre
+        FROM usuarios u
+        LEFT JOIN medicos_especialidades me ON u.id = me.usuario_id
+        LEFT JOIN especialidades e ON me.especialidad_id = e.id
+        ORDER BY u.creado_en DESC
+    ";
     $stmt = $db->prepare($query);
     $stmt->execute();
     
