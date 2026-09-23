@@ -20,7 +20,7 @@ try {
 
     // 1. Obtener la lista base de médicos (filtrada)
     $q_medicos = "
-        SELECT u.id, u.nombre, u.apellido 
+        SELECT u.id, u.nombre, u.apellido, u.foto_perfil 
         FROM usuarios u
         WHERE u.rol = 'medico'
     ";
@@ -115,6 +115,8 @@ try {
         $medico['horarios'] = array_values(array_filter($horarios_raw, function($h) use ($id) {
             return $h['medico_id'] == $id;
         }));
+
+        $medico['foto_url'] = $medico['foto_perfil'] ?? null;
 
         $resultado[] = $medico;
     }

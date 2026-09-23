@@ -83,13 +83,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         horariosHtml = `<div class="text-muted small">Sin horarios cargados</div>`;
                     }
 
-                    // Foto por defecto
-                    const fotoUrl = medico.foto_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(medico.nombre + ' ' + medico.apellido) + '&background=e9ecef&color=6c757d&size=200';
+                    // Foto del médico o fallback de iniciales
+                    const avatarDefault = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(medico.nombre + ' ' + medico.apellido) + '&background=e9ecef&color=6c757d&size=200';
+                    const fotoUrl = (medico.foto_perfil && medico.foto_perfil.trim() !== '') 
+                        ? medico.foto_perfil 
+                        : ((medico.foto_url && medico.foto_url.trim() !== '') ? medico.foto_url : avatarDefault);
 
                     col.innerHTML = `
                         <div class="card w-100 border-0 shadow-sm glass-card hover-lift" style="border-radius: 1rem; overflow: hidden; transition: transform 0.3s ease, box-shadow 0.3s ease;">
                             <div class="text-center pt-4 pb-2" style="background: rgba(248,249,250,0.5);">
-                                <img src="${fotoUrl}" alt="Dr. ${medico.apellido}" class="rounded-circle shadow-sm border border-3 border-white" style="width: 120px; height: 120px; object-fit: cover;">
+                                <img src="${fotoUrl}" alt="Dr. ${medico.apellido}" class="rounded-circle shadow-sm border border-3 border-white" style="width: 120px; height: 120px; object-fit: cover;" onerror="this.onerror=null; this.src='${avatarDefault}';">
                             </div>
                             <div class="card-body d-flex flex-column text-center">
                                 <h5 class="card-title fw-bold mb-1">${medico.nombre} ${medico.apellido}</h5>

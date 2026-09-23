@@ -98,6 +98,12 @@ function iniciarWizardReserva(medicoId) {
                 document.getElementById('wizard-medico-nombre').textContent = nombreCompleto;
                 document.getElementById('wizard-medico-nombre-q').textContent = nombreCompleto;
                 document.getElementById('wizard-especialidad-nombre').textContent = especialidadNombre;
+
+                const foto = med.foto_perfil || med.foto_url;
+                const avatarContainer = document.getElementById('wizard-avatar-container');
+                if (avatarContainer && foto && foto.trim() !== '') {
+                    avatarContainer.innerHTML = `<img src="${foto}" alt="${nombreCompleto}" class="w-100 h-100 object-fit-cover">`;
+                }
             } else {
                 alert("Profesional no encontrado.");
                 window.location.href = 'index.php';

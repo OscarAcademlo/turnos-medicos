@@ -46,7 +46,7 @@
             <div class="glass-card p-3 mb-5 sticky-top mt-3" style="z-index: 1020; top: 1rem;">
                 <div class="row align-items-center">
                     <div class="col-md-4 d-flex align-items-center mb-3 mb-md-0">
-                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3 shadow-sm" style="width: 45px; height: 45px;">
+                        <div id="wizard-avatar-container" class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3 shadow-sm overflow-hidden" style="width: 45px; height: 45px; flex-shrink: 0;">
                             <i class="bi bi-person-fill fs-4"></i>
                         </div>
                         <div>
