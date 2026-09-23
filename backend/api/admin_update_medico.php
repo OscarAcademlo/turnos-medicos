@@ -22,6 +22,14 @@ if(!empty($data->id)) {
     $params = [];
     $updates = [];
     
+    if(isset($data->nombre) && trim($data->nombre) !== '') {
+        $updates[] = "nombre = :nombre";
+        $params[':nombre'] = trim($data->nombre);
+    }
+    if(isset($data->apellido) && trim($data->apellido) !== '') {
+        $updates[] = "apellido = :apellido";
+        $params[':apellido'] = trim($data->apellido);
+    }
     if(isset($data->biografia)) {
         $updates[] = "biografia = :biografia";
         $params[':biografia'] = $data->biografia;

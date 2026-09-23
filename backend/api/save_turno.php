@@ -32,16 +32,27 @@ if(
         $cobertura_id = (isset($data->cobertura_id) && is_numeric($data->cobertura_id)) ? $data->cobertura_id : null;
         $plan_id = (isset($data->plan_id) && is_numeric($data->plan_id)) ? $data->plan_id : null;
         
+        // Auto-healing: agregar columna unidad_id si no existe
+        try {
+            $cols = $db->query("SHOW COLUMNS FROM turnos LIKE 'unidad_id'")->fetchAll();
+            if(empty($cols)) {
+                $db->exec("ALTER TABLE turnos ADD COLUMN unidad_id INT NULL");
+            }
+        } catch(Exception $e) {}
+
+        // Determinar unidad_id (sede)
+        $unidad_id = (isset($data->unidad_id) && is_numeric($data->unidad_id)) ? intval($data->unidad_id) : null;
+
         // Calcular hora_fin (asumimos 30 minutos por defecto si no hay info)
         $hora_inicio = $data->hora;
         $time = strtotime($hora_inicio);
         $hora_fin = date("H:i", strtotime('+30 minutes', $time));
 
         $query = "INSERT INTO turnos (
-                    medico_id, paciente_id, especialidad_id, obra_social_id, plan_id, 
+                    medico_id, paciente_id, especialidad_id, obra_social_id, plan_id, unidad_id,
                     fecha, hora_inicio, hora_fin, estado
                   ) VALUES (
-                    :medico_id, :paciente_id, :especialidad_id, :obra_social_id, :plan_id, 
+                    :medico_id, :paciente_id, :especialidad_id, :obra_social_id, :plan_id, :unidad_id,
                     :fecha, :hora_inicio, :hora_fin, 'confirmado'
                   )";
 
@@ -52,6 +63,7 @@ if(
         
         $stmt->bindParam(":obra_social_id", $cobertura_id, PDO::PARAM_INT);
         $stmt->bindParam(":plan_id", $plan_id, PDO::PARAM_INT);
+        $stmt->bindParam(":unidad_id", $unidad_id, PDO::PARAM_INT);
         
         $stmt->bindParam(":fecha", $data->fecha);
         $stmt->bindParam(":hora_inicio", $hora_inicio);

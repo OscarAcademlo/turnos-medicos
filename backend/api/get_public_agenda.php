@@ -20,7 +20,7 @@ try {
 
     // 1. Obtener la lista base de médicos (filtrada)
     $q_medicos = "
-        SELECT u.id, u.nombre, u.apellido, u.foto_perfil 
+        SELECT u.id, u.nombre, u.apellido, u.foto_perfil, u.direccion 
         FROM usuarios u
         WHERE u.rol = 'medico'
     ";
@@ -88,12 +88,14 @@ try {
     $stmt_os->execute($medicos_ids);
     $obras_sociales_raw = $stmt_os->fetchAll(PDO::FETCH_ASSOC);
 
-    // 4. Obtener horarios de los médicos filtrados
+    // 4. Obtener horarios de los médicos filtrados con su sede
     $q_horarios = "
-        SELECT medico_id, dia_semana, hora_inicio, hora_fin 
-        FROM horarios_medicos 
-        WHERE medico_id IN ($ids_placeholder)
-        ORDER BY FIELD(dia_semana, 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'), hora_inicio ASC
+        SELECT h.medico_id, h.dia_semana, h.hora_inicio, h.hora_fin, h.duracion_turno_minutos,
+               h.unidad_id, ua.nombre as unidad_nombre, ua.calle as unidad_calle, ua.numero as unidad_numero
+        FROM horarios_medicos h
+        LEFT JOIN unidades_atencion ua ON h.unidad_id = ua.id
+        WHERE h.medico_id IN ($ids_placeholder)
+        ORDER BY FIELD(h.dia_semana, 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'), h.hora_inicio ASC
     ";
     $stmt_horarios = $db->prepare($q_horarios);
     $stmt_horarios->execute($medicos_ids);

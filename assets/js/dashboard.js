@@ -179,6 +179,10 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = 'index.php';
         }
     });
+
+    // Carga inicial del contador y datos de apoyo
+    cargarMisTurnos();
+    cargarSedes();
 });
 
 function cargarMisTurnos() {
@@ -195,12 +199,17 @@ function cargarMisTurnos() {
     fetch('backend/api/get_mis_turnos.php')
         .then(res => res.json())
         .then(data => {
-            container.innerHTML = '';
+            const contadorEl = document.getElementById('contador-proximos-turnos');
+            if (contadorEl) {
+                const cant = (data && Array.isArray(data)) ? data.filter(t => t.estado !== 'cancelado').length : 0;
+                contadorEl.textContent = cant;
+            }
+
             if(!data || data.length === 0 || data.message) {
                 container.innerHTML = `
                     <div class="alert alert-info rounded-4 shadow-sm border-0 d-flex align-items-center" role="alert">
                         <i class="bi bi-info-circle-fill fs-4 me-3"></i>
-                        <div>Todavía no tienes turnos programados. Haz clic en "Solicitar Turno" para agendar uno.</div>
+                        <div>Todavía no hay turnos programados. Haz clic en "Solicitar Turno" para agendar uno.</div>
                     </div>
                 `;
                 return;
@@ -225,6 +234,12 @@ function cargarMisTurnos() {
                     if(turno.plan_nombre) coberturaText += ' - ' + turno.plan_nombre;
                 }
 
+                const pacienteInfo = turno.paciente_nombre ? `
+                    <div class="mb-2 text-primary small">
+                        <i class="bi bi-person-fill me-1"></i> Paciente: <strong>${turno.paciente_nombre} ${turno.paciente_apellido || ''}</strong>
+                    </div>
+                ` : '';
+
                 html += `
                     <div class="col-md-6 col-lg-4">
                         <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden position-relative">
@@ -244,6 +259,8 @@ function cargarMisTurnos() {
                                 
                                 <hr class="opacity-10 my-3">
                                 
+                                ${pacienteInfo}
+
                                 <div class="mb-2">
                                     <i class="bi bi-person-badge text-muted me-2"></i>
                                     <span class="fw-semibold">Dr/a. ${turno.medico_nombre} ${turno.medico_apellido}</span>
@@ -253,6 +270,12 @@ function cargarMisTurnos() {
                                     <i class="bi bi-heart-pulse text-muted me-2"></i>
                                     <span>${turno.especialidad_nombre}</span>
                                 </div>
+
+                                ${turno.sede_nombre ? `
+                                <div class="mb-2">
+                                    <i class="bi bi-geo-alt text-primary me-2"></i>
+                                    <span class="text-primary fw-medium small">${turno.sede_nombre}${turno.sede_calle ? ' (' + turno.sede_calle + (turno.sede_numero ? ' ' + turno.sede_numero : '') + ')' : ''}</span>
+                                </div>` : ''}
                                 
                                 <div>
                                     <i class="bi bi-shield-check text-muted me-2"></i>
@@ -279,6 +302,7 @@ function cargarMisTurnos() {
 
 let usuariosDisponibles = [];
 let especialidadesDisponibles = [];
+let sedesDisponibles = [];
 
 // Función para cargar usuarios desde la base de datos
 function cargarUsuarios() {
@@ -895,15 +919,17 @@ function cargarMedicosAdmin() {
         </div>
     `;
 
-    // Cargar médicos, Obras Sociales y Especialidades
+    // Cargar médicos, Obras Sociales, Especialidades y Sedes
     Promise.all([
         fetch('backend/api/admin_get_medicos.php').then(res => res.json()),
         fetch('backend/api/get_obras_sociales.php').then(res => res.json()),
-        fetch('backend/api/get_especialidades.php').then(res => res.json())
-    ]).then(([medicos, obras, especialidades]) => {
+        fetch('backend/api/get_especialidades.php').then(res => res.json()),
+        fetch('backend/api/crud_unidades.php').then(res => res.json()).catch(() => [])
+    ]).then(([medicos, obras, especialidades, sedes]) => {
         medicosDisponibles = medicos;
         obrasSocialesDisponibles = obras;
         especialidadesDisponibles = especialidades || [];
+        sedesDisponibles = sedes || [];
         
         renderMedicos(medicosDisponibles);
     }).catch(err => {
@@ -926,7 +952,12 @@ function renderMedicos(medicos) {
             : `<div class="rounded-circle mb-3 bg-light d-inline-flex align-items-center justify-content-center" style="width:100px;height:100px;border:3px solid #e9ecef;"><i class="bi bi-person-fill text-secondary" style="font-size:3rem;"></i></div>`;
         
         const horariosResumen = med.horarios && med.horarios.length > 0
-            ? med.horarios.map(h => `<span class="badge bg-light text-dark border me-1 mb-1">${h.dia_semana} ${h.hora_inicio.slice(0,5)} a ${h.hora_fin.slice(0,5)} hs</span>`).join('')
+            ? med.horarios.map(h => {
+                const sede = h.unidad_nombre ? ` • <span class="text-primary fw-semibold">${h.unidad_nombre}</span>` : '';
+                return `<div class="badge bg-light text-dark border me-1 mb-1 p-2 text-start d-block" style="font-size:0.78rem; font-weight:normal;">
+                    <i class="bi bi-clock text-primary me-1"></i><strong>${h.dia_semana}:</strong> ${h.hora_inicio.slice(0,5)} a ${h.hora_fin.slice(0,5)} hs${sede}
+                </div>`;
+            }).join('')
             : `<span class="text-muted small">Sin horarios configurados</span>`;
         
         const cantCoberturas = (med.obras_sociales ? med.obras_sociales.length : 0) + (med.planes ? med.planes.length : 0);
@@ -939,7 +970,7 @@ function renderMedicos(medicos) {
                         <h5 class="fw-bold mb-1">Dr/a. ${med.nombre} ${med.apellido}</h5>
                         <p class="text-muted small mb-1">${med.especialidad_nombre || 'Sin especialidad'}</p>
                         <p class="text-muted small mb-2">Matrícula: ${med.matricula || 'No especificada'}</p>
-                        <div class="mb-3 text-start px-2">${horariosResumen}</div>
+                        <div class="mb-3 text-start px-2" style="max-height:130px; overflow-y:auto;">${horariosResumen}</div>
                         <div class="d-grid gap-2">
                             <button class="btn btn-outline-primary btn-sm rounded-pill" onclick="abrirEditMedico(${med.id})">
                                 <i class="bi bi-pencil-square me-1"></i> Editar Perfil y Especialidades
@@ -975,29 +1006,26 @@ function abrirEditMedico(id) {
     if(!med) return;
     
     document.getElementById('edit-medico-id').value = med.id;
+    document.getElementById('edit-medico-nombre').value = med.nombre || '';
+    document.getElementById('edit-medico-apellido').value = med.apellido || '';
     document.getElementById('edit-medico-matricula').value = med.matricula || '';
     document.getElementById('edit-medico-direccion').value = med.direccion || '';
     document.getElementById('edit-medico-biografia').value = med.biografia || '';
     document.getElementById('edit-medico-foto').value = '';
+
+    // Llenar select de sedes
+    const sedeSelect = document.getElementById('edit-medico-sede-select');
+    if (sedeSelect) {
+        sedeSelect.innerHTML = '<option value="">-- Seleccionar Sede de Atención (Configuración) --</option>';
+        sedesDisponibles.forEach(s => {
+            const dir = [s.calle, s.numero].filter(Boolean).join(' ');
+            const label = s.nombre + (dir ? ` (${dir})` : '');
+            sedeSelect.innerHTML += `<option value="${s.id}">${label}</option>`;
+        });
+    }
     
     // Especialidades dinámicas
-    const espContainer = document.getElementById('edit-medico-especialidades-container');
-    const medEspIds = med.especialidades_ids || (med.especialidades ? med.especialidades.map(e => e.id) : []);
-    if (espContainer) {
-        if (!especialidadesDisponibles || especialidadesDisponibles.length === 0) {
-            espContainer.innerHTML = '<span class="text-muted small">No hay especialidades configuradas. Puedes agregarlas en la pestaña Especialidades.</span>';
-        } else {
-            espContainer.innerHTML = especialidadesDisponibles.map(esp => {
-                const checked = medEspIds.includes(esp.id) ? 'checked' : '';
-                return `
-                    <div class="form-check mb-1">
-                        <input class="form-check-input check-especialidad-medico" type="checkbox" value="${esp.id}" id="edit-esp-${esp.id}" ${checked}>
-                        <label class="form-check-label" for="edit-esp-${esp.id}">${esp.nombre}</label>
-                    </div>
-                `;
-            }).join('');
-        }
-    }
+    renderEspecialidadesCheckboxes(med);
 
     // Manejar foto: mostrar imagen si existe, o placeholder
     const preview = document.getElementById('edit-medico-foto-preview');
@@ -1016,6 +1044,85 @@ function abrirEditMedico(id) {
     modal.show();
 }
 
+function renderEspecialidadesCheckboxes(medico) {
+    const espContainer = document.getElementById('edit-medico-especialidades-container');
+    if (!espContainer) return;
+    
+    const medEspIds = medico 
+        ? (medico.especialidades_ids || (medico.especialidades ? medico.especialidades.map(e => e.id || e.especialidad_id) : []))
+        : Array.from(document.querySelectorAll('.check-especialidad-medico:checked')).map(cb => parseInt(cb.value));
+
+    if (!especialidadesDisponibles || especialidadesDisponibles.length === 0) {
+        espContainer.innerHTML = '<span class="text-muted small">No hay especialidades configuradas. Puedes agregar una abajo directamente.</span>';
+    } else {
+        espContainer.innerHTML = especialidadesDisponibles.map(esp => {
+            const checked = medEspIds.includes(esp.id) ? 'checked' : '';
+            return `
+                <div class="form-check mb-1">
+                    <input class="form-check-input check-especialidad-medico" type="checkbox" value="${esp.id}" id="edit-esp-${esp.id}" ${checked}>
+                    <label class="form-check-label" for="edit-esp-${esp.id}">${esp.nombre}</label>
+                </div>
+            `;
+        }).join('');
+    }
+}
+
+// Al seleccionar una sede en el perfil del médico
+window.seleccionarSedeEnMedico = function(sedeId) {
+    if(!sedeId) return;
+    const sede = sedesDisponibles.find(s => s.id == sedeId);
+    if(sede) {
+        const dir = [sede.calle, sede.numero].filter(Boolean).join(' ');
+        const loc = sede.localidad ? ` (${sede.localidad})` : '';
+        document.getElementById('edit-medico-direccion').value = sede.nombre + (dir ? ` - ${dir}` : '') + loc;
+    }
+};
+
+// Agregar especialidad rápida desde el modal
+window.agregarEspecialidadRapida = function() {
+    const input = document.getElementById('nueva-especialidad-rapida');
+    const nombre = input.value.trim();
+    if(!nombre) {
+        alert('Escribe el nombre de la especialidad');
+        return;
+    }
+
+    fetch('backend/api/crud_especialidades.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre })
+    })
+    .then(res => res.json())
+    .then(data => {
+        input.value = '';
+        // Recargar especialidades
+        return fetch('backend/api/get_especialidades.php').then(r => r.json());
+    })
+    .then(esps => {
+        especialidadesDisponibles = esps;
+        // Buscar la nueva especialidad creada
+        const creada = esps.find(e => e.nombre.toLowerCase() === nombre.toLowerCase());
+        const espContainer = document.getElementById('edit-medico-especialidades-container');
+        
+        // Renderizar manteniendo las ya seleccionadas + la nueva
+        const checksActuales = Array.from(document.querySelectorAll('.check-especialidad-medico:checked')).map(cb => parseInt(cb.value));
+        if (creada && !checksActuales.includes(creada.id)) {
+            checksActuales.push(creada.id);
+        }
+        
+        espContainer.innerHTML = especialidadesDisponibles.map(esp => {
+            const checked = checksActuales.includes(esp.id) ? 'checked' : '';
+            return `
+                <div class="form-check mb-1">
+                    <input class="form-check-input check-especialidad-medico" type="checkbox" value="${esp.id}" id="edit-esp-${esp.id}" ${checked}>
+                    <label class="form-check-label" for="edit-esp-${esp.id}">${esp.nombre}</label>
+                </div>
+            `;
+        }).join('');
+    })
+    .catch(() => alert('Error al agregar especialidad'));
+};
+
 // Subida de imagen
 document.getElementById('edit-medico-foto').addEventListener('change', function(e) {
     const file = e.target.files[0];
@@ -1033,7 +1140,6 @@ document.getElementById('edit-medico-foto').addEventListener('change', function(
         if(data.url) {
             const preview = document.getElementById('edit-medico-foto-preview');
             const placeholder = document.getElementById('edit-medico-foto-placeholder');
-            // Guardar la URL relativa como data attribute para no perderla
             preview.src = data.url;
             preview.setAttribute('data-url-relativa', data.url);
             preview.classList.remove('d-none');
@@ -1052,13 +1158,10 @@ document.getElementById('form-edit-medico').addEventListener('submit', function(
     btn.disabled = true;
     
     const preview = document.getElementById('edit-medico-foto-preview');
-    // Preferir la URL relativa guardada en el data attribute; fallback al src
     let fotoUrl = preview.getAttribute('data-url-relativa') || preview.getAttribute('src') || null;
-    // Limpiar si es URL absoluta del servidor (convertir a relativa)
     if(fotoUrl && fotoUrl.includes('/img/medicos/')) {
         fotoUrl = 'img/medicos/' + fotoUrl.split('/img/medicos/').pop();
     }
-    // Si el img está oculto (placeholder activo), no hay foto
     if(preview.classList.contains('d-none')) fotoUrl = null;
     
     const espChecks = document.querySelectorAll('.check-especialidad-medico:checked');
@@ -1066,6 +1169,8 @@ document.getElementById('form-edit-medico').addEventListener('submit', function(
 
     const payload = {
         id: document.getElementById('edit-medico-id').value,
+        nombre: document.getElementById('edit-medico-nombre').value,
+        apellido: document.getElementById('edit-medico-apellido').value,
         matricula: document.getElementById('edit-medico-matricula').value,
         direccion: document.getElementById('edit-medico-direccion').value,
         biografia: document.getElementById('edit-medico-biografia').value,
@@ -1191,7 +1296,6 @@ document.getElementById('form-coberturas-medico').addEventListener('submit', fun
 // ==========================================
 // SEDES / UNIDADES DE ATENCIÓN
 // ==========================================
-let sedesDisponibles = [];
 
 function cargarSedes() {
     fetch('backend/api/crud_unidades.php')
@@ -1304,9 +1408,11 @@ function abrirHorariosMedico(id) {
     const container = document.getElementById('horarios-editor-container');
     container.innerHTML = '';
 
-    // Renderizar horarios existentes
+    // Renderizar horarios existentes o un bloque vacío si no hay
     if(med.horarios && med.horarios.length > 0) {
         med.horarios.forEach(h => renderBloqueHorario(container, h));
+    } else {
+        renderBloqueHorario(container, null);
     }
 
     new bootstrap.Modal(document.getElementById('modalHorariosMedico')).show();
@@ -1330,9 +1436,11 @@ function generarOpcionesHoras(horaActual, defecto) {
 }
 
 function renderBloqueHorario(container, h) {
-    const sedesOpts = sedesDisponibles.map(s =>
-        `<option value="${s.id}" ${h && h.unidad_id == s.id ? 'selected' : ''}>${s.nombre}</option>`
-    ).join('');
+    const sedesOpts = sedesDisponibles.map(s => {
+        const dir = [s.calle, s.numero].filter(Boolean).join(' ');
+        const label = s.nombre + (dir ? ` (${dir})` : '');
+        return `<option value="${s.id}" ${h && h.unidad_id == s.id ? 'selected' : ''}>${label}</option>`;
+    }).join('');
 
     const div = document.createElement('div');
     div.className = 'card border-0 bg-light rounded-3 p-3 mb-3 horario-bloque';
@@ -1361,14 +1469,14 @@ function renderBloqueHorario(container, h) {
                 <input type="number" class="form-control form-control-sm hb-duracion" min="10" max="120" step="5" value="${h ? h.duracion_turno_minutos : 30}">
             </div>
             <div class="col-md-3">
-                <label class="form-label small fw-semibold">Sede</label>
+                <label class="form-label small fw-semibold">Centro / Sede</label>
                 <select class="form-select form-select-sm hb-sede">
-                    <option value="">Sin sede</option>
+                    <option value="">-- Sin sede --</option>
                     ${sedesOpts}
                 </select>
             </div>
             <div class="col-md-1 d-flex align-items-end">
-                <button class="btn btn-sm btn-outline-danger rounded-circle" onclick="this.closest('.horario-bloque').remove()">
+                <button class="btn btn-sm btn-outline-danger rounded-circle" onclick="this.closest('.horario-bloque').remove()" title="Eliminar bloque">
                     <i class="bi bi-trash"></i>
                 </button>
             </div>

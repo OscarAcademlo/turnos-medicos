@@ -63,27 +63,29 @@ let medicosGlobal = [];
                     
                     // Botón Coberturas
                     const cantCoberturas = medico.obras_sociales ? medico.obras_sociales.length : 0;
-                    const coberturasBtnHtml = cantCoberturas > 0
-                        ? `<button type="button" class="btn btn-outline-primary btn-sm rounded-pill w-100 mb-3 fw-medium" onclick="abrirModalCoberturasPaciente(${medico.id})">
-                               <i class="bi bi-shield-check me-1"></i> Ver Coberturas (${cantCoberturas})
-                           </button>`
-                        : `<button type="button" class="btn btn-outline-secondary btn-sm rounded-pill w-100 mb-3" onclick="abrirModalCoberturasPaciente(${medico.id})">
-                               <i class="bi bi-info-circle me-1"></i> Particular / Ver coberturas
-                           </button>`;
+                    const coberturasBtnHtml = `
+                        <button type="button" class="btn btn-outline-primary btn-sm rounded-pill w-100 mb-3 fw-medium" onclick="abrirModalCoberturasPaciente(${medico.id})">
+                            <i class="bi bi-shield-check me-1"></i> Ver Coberturas ${cantCoberturas > 0 ? '(' + cantCoberturas + ')' : ''}
+                        </button>
+                    `;
                     
-                    // Horarios (formato 24 hs estricto)
+                    // Horarios (formato 24 hs estricto con Centro de Atención / Sede)
                     let horariosHtml = '';
                     if (medico.horarios && medico.horarios.length > 0) {
-                        medico.horarios.slice(0, 3).forEach(h => {
-                            const inicio = h.hora_inicio.substring(0, 5);
-                            const fin = h.hora_fin.substring(0, 5);
-                            horariosHtml += `<div class="small"><i class="bi bi-clock me-1 text-primary"></i> <strong>${h.dia_semana}:</strong> ${inicio} a ${fin} hs</div>`;
+                        medico.horarios.forEach(h => {
+                            const inicio = h.hora_inicio ? h.hora_inicio.substring(0, 5) : '';
+                            const fin = h.hora_fin ? h.hora_fin.substring(0, 5) : '';
+                            const sedeTxt = h.unidad_nombre 
+                                ? `<span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1" style="font-size:0.72rem; font-weight:600;"><i class="bi bi-geo-alt-fill me-1"></i>${h.unidad_nombre}</span>` 
+                                : '';
+                            horariosHtml += `
+                                <div class="small mb-1 d-flex justify-content-between align-items-center py-1 border-bottom border-light-subtle">
+                                    <span><i class="bi bi-clock me-1 text-primary"></i> <strong>${h.dia_semana}:</strong> ${inicio} a ${fin} hs</span>
+                                    ${sedeTxt}
+                                </div>`;
                         });
-                        if(medico.horarios.length > 3) {
-                            horariosHtml += `<div class="small text-primary mt-1">+${medico.horarios.length - 3} horarios más</div>`;
-                        }
                     } else {
-                        horariosHtml = `<div class="text-muted small">Sin horarios cargados</div>`;
+                        horariosHtml = `<div class="text-muted small py-1"><i class="bi bi-calendar-x me-1"></i> Sin horarios cargados</div>`;
                     }
 
                     // Foto del médico o fallback de iniciales
@@ -101,7 +103,7 @@ let medicosGlobal = [];
                                 <h5 class="card-title fw-bold mb-1">${medico.nombre} ${medico.apellido}</h5>
                                 <h6 class="card-subtitle mb-3 text-primary fw-semibold">${especialidadesText}</h6>
                                 ${coberturasBtnHtml}
-                                <div class="bg-light rounded p-2 mb-3 text-start">
+                                <div class="bg-light rounded-3 p-2 mb-3 text-start" style="max-height: 140px; overflow-y: auto;">
                                     ${horariosHtml}
                                 </div>
                                 <button class="btn btn-primary rounded-pill w-100 mt-auto fw-semibold py-2" onclick="agendarTurno(${medico.id})">

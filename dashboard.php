@@ -116,7 +116,7 @@
                         <div class="card border-0 shadow-sm h-100 rounded-4 overflow-hidden">
                             <div class="card-body p-4 bg-primary text-white position-relative">
                                 <h5 class="card-title fw-normal opacity-75">Próximos Turnos</h5>
-                                <p class="card-text display-4 fw-bold mb-0">0</p>
+                                <p class="card-text display-4 fw-bold mb-0" id="contador-proximos-turnos">0</p>
                                 <i class="bi bi-calendar-event position-absolute" style="font-size: 5rem; right: -10px; bottom: -20px; opacity: 0.2;"></i>
                             </div>
                         </div>
@@ -540,6 +540,16 @@
                     <input type="file" id="edit-medico-foto" class="d-none" accept="image/png, image/jpeg, image/webp">
                 </div>
             </div>
+            <div class="row g-2 mb-3">
+                <div class="col-6">
+                    <label class="form-label fw-semibold">Nombre</label>
+                    <input type="text" class="form-control bg-light border-0 rounded-3" id="edit-medico-nombre">
+                </div>
+                <div class="col-6">
+                    <label class="form-label fw-semibold">Apellido</label>
+                    <input type="text" class="form-control bg-light border-0 rounded-3" id="edit-medico-apellido">
+                </div>
+            </div>
             <div class="mb-3">
                 <label class="form-label fw-semibold">Matrícula</label>
                 <input type="text" class="form-control bg-light border-0 rounded-3" id="edit-medico-matricula">
@@ -549,11 +559,19 @@
                 <div id="edit-medico-especialidades-container" class="p-3 bg-light rounded-3" style="max-height: 180px; overflow-y: auto;">
                     <!-- checkboxes de especialidades cargados dinámicamente -->
                 </div>
-                <small class="text-muted">Selecciona una o más especialidades para este profesional.</small>
+                <div class="input-group input-group-sm mt-2">
+                    <input type="text" class="form-control bg-light border-0" id="nueva-especialidad-rapida" placeholder="¿No está en la lista? Escribe otra especialidad...">
+                    <button class="btn btn-outline-primary" type="button" onclick="agregarEspecialidadRapida()">+ Agregar</button>
+                </div>
+                <small class="text-muted">Selecciona una o más especialidades o agrega una nueva directamente.</small>
             </div>
             <div class="mb-3">
-                <label class="form-label fw-semibold">Dirección de Atención</label>
-                <input type="text" class="form-control bg-light border-0 rounded-3" id="edit-medico-direccion">
+                <label class="form-label fw-semibold">Sede de Atención</label>
+                <select class="form-select bg-light border-0 rounded-3 mb-2" id="edit-medico-sede-select" onchange="seleccionarSedeEnMedico(this.value)">
+                    <option value="">-- Seleccionar Sede de Atención (Configuración) --</option>
+                </select>
+                <input type="text" class="form-control bg-light border-0 rounded-3" id="edit-medico-direccion" placeholder="O escribe la dirección de atención...">
+                <small class="text-muted">Elige una sede cargada en Configuración o escribe la dirección manualmente.</small>
             </div>
             <div class="mb-3">
                 <label class="form-label fw-semibold">Biografía / Presentación</label>
@@ -636,7 +654,10 @@
       </div>
       <div class="modal-body p-4">
         <input type="hidden" id="horario-medico-id">
-        <p class="text-muted small mb-3">Marcá los días de atención y configurá el horario y la sede para cada bloque.</p>
+        <p class="text-muted small mb-3">
+            Podés asignar diferentes centros de atención a cada bloque de horario (ej: Lunes en Pasaje Gutiérrez, Miércoles en Km 1).
+            <a href="javascript:void(0)" onclick="bootstrap.Modal.getInstance(document.getElementById('modalHorariosMedico')).hide(); document.getElementById('menu-configuracion').click(); setTimeout(() => document.getElementById('tab-sedes-tab').click(), 400);" class="text-primary text-decoration-none fw-semibold ms-1"><i class="bi bi-geo-alt"></i> Administrar Sedes</a>
+        </p>
         <div id="horarios-editor-container">
             <!-- Se generan dinámicamente los días -->
         </div>

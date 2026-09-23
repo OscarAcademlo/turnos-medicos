@@ -88,6 +88,7 @@ function iniciarWizardReserva(medicoId) {
                     ? med.especialidades.map(e => e.nombre).join(', ') 
                     : 'Medicina General';
                     
+                wizardData.medico = med;
                 wizardData.medicoNombre = nombreCompleto;
                 wizardData.especialidadNombre = especialidadNombre;
                 // Guardar el ID de la primera especialidad para el guardado del turno
@@ -414,7 +415,7 @@ window.wizardRenderCalendarioMock = function() {
                     btn.querySelectorAll('.text-muted').forEach(el => el.classList.add('text-white-50'));
                     
                     wizardData.fecha = d.toISOString().split('T')[0];
-                    wizardShowHorarios(cupos);
+                    wizardShowHorarios(d);
                 };
                 
                 monthContainer.appendChild(btn);
@@ -426,7 +427,7 @@ window.wizardRenderCalendarioMock = function() {
         });
 };
 
-window.wizardShowHorarios = function(cupos) {
+window.wizardShowHorarios = function(dateObj) {
     const containerHorarios = document.getElementById('wizard-horarios-container');
     const list = document.getElementById('wizard-horarios-list');
     const btnConfirmar = document.getElementById('wizard-btn-confirmar');
@@ -435,23 +436,92 @@ window.wizardShowHorarios = function(cupos) {
     list.innerHTML = '';
     btnConfirmar.classList.add('d-none');
     
-    let baseHour = 9;
-    for(let i=0; i<cupos; i++) {
-        let hr = baseHour + Math.floor(i/2);
-        let min = (i%2 === 0) ? '00' : '30';
-        let timeStr = `${hr.toString().padStart(2, '0')}:${min}`;
+    const diasNombres = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
+    const diaSeleccionado = (dateObj instanceof Date) ? diasNombres[dateObj.getDay()] : null;
+    
+    // Buscar si el médico tiene horario cargado para este día
+    const horariosDelDia = (wizardData.medico && wizardData.medico.horarios)
+        ? wizardData.medico.horarios.filter(h => h.dia_semana.toLowerCase() === (diaSeleccionado || '').toLowerCase())
+        : [];
         
-        const btn = document.createElement('button');
-        btn.className = 'btn btn-outline-primary px-4 py-2 fw-bold shadow-sm';
-        btn.style.borderRadius = '50px';
-        btn.textContent = timeStr;
-        btn.onclick = () => {
-            document.querySelectorAll('#wizard-horarios-list .btn').forEach(b => b.classList.remove('active', 'btn-primary', 'text-white'));
-            btn.classList.add('active', 'btn-primary', 'text-white');
-            wizardData.hora = timeStr;
-            btnConfirmar.classList.remove('d-none');
-        };
-        list.appendChild(btn);
+    let sedeHeader = document.getElementById('wizard-sede-info-banner');
+    if (!sedeHeader) {
+        sedeHeader = document.createElement('div');
+        sedeHeader.id = 'wizard-sede-info-banner';
+        containerHorarios.insertBefore(sedeHeader, list);
+    }
+    
+    if (horariosDelDia.length > 0) {
+        const primerH = horariosDelDia[0];
+        wizardData.unidadId = primerH.unidad_id || null;
+        wizardData.sedeNombre = primerH.unidad_nombre || '';
+        
+        if (primerH.unidad_nombre) {
+            const dir = [primerH.unidad_calle, primerH.unidad_numero].filter(Boolean).join(' ');
+            sedeHeader.innerHTML = `
+                <div class="alert alert-primary d-inline-flex align-items-center py-2 px-3 rounded-pill mb-3 shadow-sm border-0">
+                    <i class="bi bi-geo-alt-fill text-primary me-2 fs-5"></i>
+                    <span>Centro de atención: <strong>${primerH.unidad_nombre}</strong>${dir ? ' (' + dir + ')' : ''}</span>
+                </div>
+            `;
+            sedeHeader.classList.remove('d-none');
+        } else {
+            sedeHeader.classList.add('d-none');
+        }
+        
+        // Generar slots basados en hora_inicio, hora_fin y duracion_turno_minutos
+        horariosDelDia.forEach(bloque => {
+            const duracion = parseInt(bloque.duracion_turno_minutos) || 30;
+            const [hIni, mIni] = (bloque.hora_inicio || '08:00').split(':').map(Number);
+            const [hFin, mFin] = (bloque.hora_fin || '12:00').split(':').map(Number);
+            
+            let cur = hIni * 60 + mIni;
+            const end = hFin * 60 + mFin;
+            
+            while(cur < end) {
+                const hr = Math.floor(cur / 60);
+                const mn = cur % 60;
+                const timeStr = `${String(hr).padStart(2, '0')}:${String(mn).padStart(2, '0')}`;
+                
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-outline-primary px-4 py-2 fw-bold shadow-sm';
+                btn.style.borderRadius = '50px';
+                btn.textContent = timeStr;
+                btn.onclick = () => {
+                    document.querySelectorAll('#wizard-horarios-list .btn').forEach(b => b.classList.remove('active', 'btn-primary', 'text-white'));
+                    btn.classList.add('active', 'btn-primary', 'text-white');
+                    wizardData.hora = timeStr;
+                    wizardData.unidadId = bloque.unidad_id || null;
+                    wizardData.sedeNombre = bloque.unidad_nombre || '';
+                    btnConfirmar.classList.remove('d-none');
+                };
+                list.appendChild(btn);
+                cur += duracion;
+            }
+        });
+    } else {
+        sedeHeader.classList.add('d-none');
+        wizardData.unidadId = null;
+        wizardData.sedeNombre = null;
+        
+        let baseHour = 9;
+        for(let i=0; i<6; i++) {
+            let hr = baseHour + Math.floor(i/2);
+            let min = (i%2 === 0) ? '00' : '30';
+            let timeStr = `${hr.toString().padStart(2, '0')}:${min}`;
+            
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-outline-primary px-4 py-2 fw-bold shadow-sm';
+            btn.style.borderRadius = '50px';
+            btn.textContent = timeStr;
+            btn.onclick = () => {
+                document.querySelectorAll('#wizard-horarios-list .btn').forEach(b => b.classList.remove('active', 'btn-primary', 'text-white'));
+                btn.classList.add('active', 'btn-primary', 'text-white');
+                wizardData.hora = timeStr;
+                btnConfirmar.classList.remove('d-none');
+            };
+            list.appendChild(btn);
+        }
     }
 };
 
@@ -488,6 +558,7 @@ document.getElementById('wizard-btn-confirmar').addEventListener('click', () => 
                 especialidad_id: wizardData.especialidadId,
                 cobertura_id: wizardData.coberturaId === 'particular' ? null : wizardData.coberturaId,
                 plan_id: wizardData.planId || null,
+                unidad_id: wizardData.unidadId || null,
                 fecha: wizardData.fecha,
                 hora: wizardData.hora
             })
@@ -500,7 +571,8 @@ document.getElementById('wizard-btn-confirmar').addEventListener('click', () => 
                 btn.disabled = false;
                 return;
             }
-            alert(`¡Turno reservado exitosamente!\n\nMédico: ${wizardData.medicoNombre}\nEspecialidad: ${wizardData.especialidadNombre}\nFecha: ${wizardData.fecha}\nHora: ${wizardData.hora}\nCobertura: ${wizardData.coberturaNombre} ${wizardData.planNombre ? '- '+wizardData.planNombre : ''}`);
+            const sedeStr = wizardData.sedeNombre ? `\nSede: ${wizardData.sedeNombre}` : '';
+            alert(`¡Turno reservado exitosamente!\n\nMédico: ${wizardData.medicoNombre}\nEspecialidad: ${wizardData.especialidadNombre}\nFecha: ${wizardData.fecha}\nHora: ${wizardData.hora}${sedeStr}\nCobertura: ${wizardData.coberturaNombre} ${wizardData.planNombre ? '- '+wizardData.planNombre : ''}`);
             localStorage.removeItem('turno_pendiente');
             window.location.href = 'dashboard.php';
         })
@@ -511,7 +583,6 @@ document.getElementById('wizard-btn-confirmar').addEventListener('click', () => 
             btn.disabled = false;
         });
     } else {
-        // No está logueado, lo mandamos al login, y luego el login lo manda al dashboard que confirmará el turno.
         localStorage.setItem('turno_pendiente', JSON.stringify(wizardData));
         window.location.href = 'login.php?redirect=confirmar_turno';
     }
