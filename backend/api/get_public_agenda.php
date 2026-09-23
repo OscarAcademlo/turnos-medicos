@@ -11,6 +11,13 @@ $search_especialidad = isset($_GET['especialidad_id']) ? intval($_GET['especiali
 $search_obra_social = isset($_GET['obra_social_id']) ? intval($_GET['obra_social_id']) : 0;
 
 try {
+    // 0. Auto-healing: Crear tabla si no existe para evitar error 500 en el servidor vivo
+    $db->exec("CREATE TABLE IF NOT EXISTS medicos_obras_sociales (
+        usuario_id INT NOT NULL,
+        obra_social_id INT NOT NULL,
+        PRIMARY KEY (usuario_id, obra_social_id)
+    )");
+
     // 1. Obtener la lista base de médicos (filtrada)
     $q_medicos = "
         SELECT u.id, u.nombre, u.apellido 

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,201 +10,108 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-    
-    <style>
-        body {
-            background-color: #f8f9fa;
-            font-family: 'Inter', sans-serif;
-            color: #333;
-        }
-        
-        .header {
-            background-color: #0d8de0; /* Azul estilo Docturno */
-            padding: 15px 20px;
-            color: white;
-            display: flex;
-            align-items: center;
-        }
-
-        .header h1 {
-            font-size: 1.5rem;
-            margin: 0;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-        }
-
-        .header h1 i {
-            margin-right: 10px;
-        }
-
-        .main-title {
-            text-align: center;
-            font-weight: 300;
-            margin: 40px 0;
-            font-size: 1.8rem;
-            color: #4a4a4a;
-        }
-
-        /* Filter Section */
-        .filter-section {
-            max-width: 1100px;
-            margin: 0 auto 30px auto;
-        }
-        
-        .filter-label {
-            font-size: 0.9rem;
-            color: #6c757d;
-            margin-bottom: 5px;
-            display: block;
-        }
-
-        /* Doctor Card */
-        .doctor-card {
-            max-width: 1100px;
-            margin: 0 auto 20px auto;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            padding: 25px;
-            display: flex;
-            flex-wrap: wrap;
-            align-items: flex-start;
-        }
-
-        .doctor-avatar-col {
-            flex: 0 0 120px;
-            text-align: center;
-        }
-
-        .doctor-avatar-col img {
-            width: 90px;
-            height: 90px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid #e9ecef;
-        }
-
-        .doctor-info-col {
-            flex: 1 1 300px;
-            padding: 0 20px;
-        }
-
-        .doctor-name {
-            font-size: 1.3rem;
-            color: #2c6686; /* Azul oscuro */
-            margin-bottom: 5px;
-            font-weight: 600;
-        }
-
-        .doctor-specialty {
-            color: #6c757d;
-            margin-bottom: 10px;
-            font-size: 0.95rem;
-        }
-
-        .doctor-coberturas {
-            font-size: 0.85rem;
-            color: #999;
-            margin-bottom: 10px;
-        }
-
-        .doctor-schedule-col {
-            flex: 1 1 350px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            min-height: 100px;
-        }
-
-        .schedule-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.9rem;
-            color: #666;
-            margin-bottom: 4px;
-        }
-
-        .btn-agendar {
-            background-color: #4b8b4b; /* Verde Docturno */
-            color: white;
-            font-weight: 600;
-            border: none;
-            padding: 10px 0;
-            border-radius: 20px;
-            width: 100%;
-            margin-top: 15px;
-            transition: background-color 0.2s;
-        }
-
-        .btn-agendar:hover {
-            background-color: #3d753d;
-            color: white;
-        }
-
-        @media (max-width: 768px) {
-            .doctor-card {
-                flex-direction: column;
-            }
-            .doctor-info-col {
-                padding: 15px 0;
-            }
-            .doctor-schedule-col {
-                width: 100%;
-            }
-        }
-        
-        .loading-spinner {
-            text-align: center;
-            padding: 50px;
-            color: #6c757d;
-        }
-    </style>
+    <!-- Custom CSS -->
+    <link href="assets/css/style.css?v=<?php echo filemtime('assets/css/style.css'); ?>" rel="stylesheet">
 </head>
-<body>
-
-    <header class="header d-flex justify-content-between">
-        <h1><i class="bi bi-heart-pulse-fill"></i> Clínica Médica</h1>
-        <a href="login.php" class="btn btn-outline-light btn-sm rounded-pill fw-bold" id="btn-login-nav">Iniciar Sesión / Registrarse</a>
-    </header>
-
-    <div class="container-fluid px-3 px-md-5">
-        <h2 class="main-title">Elige el profesional que necesitas de Clínica Médica</h2>
-
-        <!-- Buscador / Filtros -->
-        <div class="row filter-section g-3">
-            <div class="col-md-4">
-                <label class="filter-label">Apellido o nombre</label>
-                <input type="text" class="form-control" id="filter-nombre" placeholder="Por apellido o nombre del profesional...">
-            </div>
-            <div class="col-md-4">
-                <label class="filter-label">Especialidad</label>
-                <select class="form-select" id="filter-especialidad">
-                    <option value="">especialidad...</option>
-                </select>
-            </div>
-            <div class="col-md-4">
-                <label class="filter-label">Cobertura médica</label>
-                <select class="form-select" id="filter-cobertura">
-                    <option value="">cobertura médica...</option>
-                </select>
-            </div>
-        </div>
-
-        <!-- Lista de Resultados -->
-        <div id="results-container">
-            <div class="loading-spinner">
-                <div class="spinner-border text-primary" role="status"></div>
-                <div class="mt-2">Cargando profesionales...</div>
-            </div>
-        </div>
-
+<body class="login-bg min-vh-100 pb-5">
+    
+    <!-- Theme Toggle -->
+    <div class="position-absolute top-0 end-0 p-3" style="z-index: 10;">
+        <button class="btn btn-outline-secondary rounded-circle glass-card border-0" id="theme-toggle">
+            <i class="bi bi-moon-fill"></i>
+        </button>
     </div>
 
-    <!-- Modals, Scripts, etc -->
+    <!-- Header / Navbar estilo Glass -->
+    <header class="py-3 mb-5 shadow-sm" style="background: rgba(255, 255, 255, 0.5); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255, 255, 255, 0.2);">
+        <div class="container d-flex flex-wrap justify-content-between align-items-center">
+            <a href="/" class="d-flex align-items-center mb-2 mb-md-0 text-decoration-none" style="color: var(--bs-primary);">
+                <i class="bi bi-heart-pulse-fill fs-3 me-2"></i>
+                <span class="fs-4 fw-bold">Clínica Médica</span>
+            </a>
+            
+            <div class="text-end">
+                <a href="login.php" class="btn btn-primary rounded-pill px-4 fw-semibold shadow-sm">
+                    <i class="bi bi-person-circle me-1"></i> Iniciar Sesión / Registrarse
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Título Principal -->
+        <div class="text-center mb-5">
+            <h1 class="display-6 fw-light mb-3">Elige el profesional que necesitas</h1>
+            <p class="lead text-muted">Agenda tu cita de manera rápida y sencilla.</p>
+        </div>
+
+        <!-- Sección de Filtros -->
+        <div class="row justify-content-center mb-5">
+            <div class="col-lg-10">
+                <div class="glass-card p-4 p-md-5 border-0">
+                    <div class="row g-4">
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small fw-semibold text-uppercase"><i class="bi bi-search me-1"></i> Profesional</label>
+                            <input type="text" id="filter-nombre" class="form-control form-control-lg bg-light border-0 shadow-none" placeholder="Nombre o apellido...">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small fw-semibold text-uppercase"><i class="bi bi-hospital me-1"></i> Especialidad</label>
+                            <select id="filter-especialidad" class="form-select form-select-lg bg-light border-0 shadow-none">
+                                <option value="">Todas las especialidades</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small fw-semibold text-uppercase"><i class="bi bi-shield-check me-1"></i> Cobertura Médica</label>
+                            <select id="filter-cobertura" class="form-select form-select-lg bg-light border-0 shadow-none">
+                                <option value="">Todas las coberturas</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contenedor de Resultados -->
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div id="results-container" class="d-flex flex-column gap-4">
+                    <!-- Los resultados se cargan vía JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- Lógica de Frontend -->
-    <script src="assets/js/agenda_publica.js?v=<?php echo time(); ?>"></script>
+    <!-- Scripts Propios -->
+    <script src="assets/js/agenda_publica.js?v=<?php echo filemtime('assets/js/agenda_publica.js'); ?>"></script>
+
+    <!-- Script de Modo Oscuro -->
+    <script>
+        const themeToggle = document.getElementById('theme-toggle');
+        const htmlElement = document.documentElement;
+        
+        // Recuperar tema preferido
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        htmlElement.setAttribute('data-bs-theme', savedTheme);
+        updateIcon(savedTheme);
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = htmlElement.getAttribute('data-bs-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            htmlElement.setAttribute('data-bs-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateIcon(newTheme);
+        });
+
+        function updateIcon(theme) {
+            if (theme === 'light') {
+                themeToggle.innerHTML = '<i class="bi bi-moon-fill"></i>';
+            } else {
+                themeToggle.innerHTML = '<i class="bi bi-sun-fill"></i>';
+            }
+        }
+    </script>
 </body>
 </html>

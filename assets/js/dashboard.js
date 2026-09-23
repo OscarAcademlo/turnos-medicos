@@ -282,10 +282,21 @@ function cargarObrasSociales() {
         });
 }
 
-// --- Lógica del Paciente (Solicitar Turno) ---
+// --- Lógica del Paciente (Solicitar Turno - UX Rediseñada) ---
 const modalTurno = document.getElementById('modalNuevoTurno');
 if(modalTurno) {
     modalTurno.addEventListener('show.bs.modal', () => {
+        // Reset state
+        document.getElementById('step-2').classList.add('d-none');
+        document.getElementById('step-3').classList.add('d-none');
+        document.getElementById('btn-confirmar-turno').classList.add('d-none');
+        document.getElementById('turno-plan').value = '';
+        document.getElementById('turno-fecha').value = '';
+        document.getElementById('turno-hora').value = '';
+        document.getElementById('planes-container').innerHTML = '';
+        document.getElementById('dias-container').innerHTML = '';
+        document.getElementById('horarios-list').innerHTML = '';
+        
         // Cargar Especialidades
         fetch('backend/api/get_especialidades.php')
             .then(res => res.json())
@@ -297,60 +308,18 @@ if(modalTurno) {
                 });
             });
 
-        // Cargar Obras Sociales
+        // No cargar Obras Sociales hasta elegir médico para filtrar (opcional), 
+        // pero por ahora cargamos todas o las permitidas por el médico
         fetch('backend/api/crud_obras_sociales.php')
             .then(res => res.json())
             .then(data => {
                 const sel = document.getElementById('turno-obra-social');
                 sel.innerHTML = '<option value="" selected disabled>Selecciona tu cobertura médica...</option>';
                 sel.innerHTML += '<option value="particular">Particular (Sin Obra Social)</option>';
-                
-                let html = '';
                 data.forEach(o => {
-                    html += `<option value="${o.id}">${o.nombre}</option>`;
-                });
-                sel.innerHTML += html;
-                
-                // Init Select2
-                $('#turno-obra-social').select2({
-                    theme: 'bootstrap-5',
-                    dropdownParent: $('#modalNuevoTurno')
-                });
-                $('#turno-plan').select2({
-                    theme: 'bootstrap-5',
-                    dropdownParent: $('#modalNuevoTurno')
+                    sel.innerHTML += `<option value="${o.id}">${o.nombre}</option>`;
                 });
             });
-            
-        // Cambio de Obra Social -> Cargar Planes
-        $('#turno-obra-social').on('change', function() {
-            const osId = $(this).val();
-            const planSel = document.getElementById('turno-plan');
-            
-            if (osId === 'particular') {
-                planSel.innerHTML = '<option value="particular">Particular</option>';
-                planSel.disabled = true;
-                return;
-            }
-            
-            planSel.disabled = true;
-            planSel.innerHTML = '<option value="" selected disabled>Cargando planes...</option>';
-            
-            fetch(`backend/api/get_planes.php?obra_social_id=${osId}`)
-                .then(res => res.json())
-                .then(data => {
-                    planSel.innerHTML = '<option value="" selected disabled>Selecciona tu plan...</option>';
-                    if(data.length > 0) {
-                        data.forEach(p => {
-                            planSel.innerHTML += `<option value="${p.id}">${p.nombre}</option>`;
-                        });
-                        planSel.disabled = false;
-                    } else {
-                        planSel.innerHTML = '<option value="unico" selected>Plan Único / No especifica</option>';
-                        planSel.disabled = false;
-                    }
-                });
-        });
     });
 
     // Cambio de Especialidad -> Cargar Médicos
@@ -371,10 +340,141 @@ if(modalTurno) {
                     });
                     medicoSel.disabled = false;
                 } else {
-                    medicoSel.innerHTML = '<option value="" selected disabled>No hay profesionales disponibles para esta especialidad.</option>';
+                    medicoSel.innerHTML = '<option value="" selected disabled>No hay profesionales disponibles.</option>';
                 }
             });
     });
+
+    // Cambio de Médico -> Mostrar Paso 2
+    document.getElementById('turno-medico').addEventListener('change', (e) => {
+        document.getElementById('step-2').classList.remove('d-none');
+        document.getElementById('turno-obra-social').value = '';
+        document.getElementById('planes-container').classList.add('d-none');
+        document.getElementById('step-3').classList.add('d-none');
+    });
+            
+    // Cambio de Obra Social -> Cargar Planes (Pills)
+    document.getElementById('turno-obra-social').addEventListener('change', (e) => {
+        const osId = e.target.value;
+        const planesContainer = document.getElementById('planes-container');
+        const inputPlan = document.getElementById('turno-plan');
+        
+        planesContainer.innerHTML = '';
+        planesContainer.classList.remove('d-none');
+        inputPlan.value = '';
+        document.getElementById('step-3').classList.add('d-none');
+        
+        if (osId === 'particular') {
+            inputPlan.value = 'particular';
+            renderPill(planesContainer, 'Particular', 'particular', inputPlan, () => showStep3());
+            return;
+        }
+        
+        planesContainer.innerHTML = '<span class="text-muted small spinner-border spinner-border-sm"></span>';
+        
+        fetch(`backend/api/get_planes.php?obra_social_id=${osId}`)
+            .then(res => res.json())
+            .then(data => {
+                planesContainer.innerHTML = '';
+                if(data.length > 0) {
+                    data.forEach(p => {
+                        renderPill(planesContainer, p.nombre, p.id, inputPlan, () => showStep3());
+                    });
+                } else {
+                    inputPlan.value = 'unico';
+                    renderPill(planesContainer, 'Plan Único', 'unico', inputPlan, () => showStep3());
+                }
+            });
+    });
+
+    // Renderiza un botón píldora simple y maneja su estado activo
+    function renderPill(container, label, value, hiddenInput, onClickCallback = null) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pill-btn';
+        if (hiddenInput.value == value) btn.classList.add('active');
+        btn.textContent = label;
+        btn.dataset.value = value;
+        
+        btn.addEventListener('click', () => {
+            // Deseleccionar hermanos
+            container.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            hiddenInput.value = value;
+            if(onClickCallback) onClickCallback(value);
+        });
+        
+        container.appendChild(btn);
+    }
+
+    // Mostrar Paso 3 (Calendario) y renderizar Días simulados
+    function showStep3() {
+        document.getElementById('step-3').classList.remove('d-none');
+        const diasContainer = document.getElementById('dias-container');
+        const inputFecha = document.getElementById('turno-fecha');
+        diasContainer.innerHTML = '';
+        inputFecha.value = '';
+        
+        // Simular próximos 14 días
+        const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        const hoy = new Date();
+        
+        for(let i = 1; i <= 14; i++) {
+            const d = new Date();
+            d.setDate(hoy.getDate() + i);
+            
+            const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+            const slots = isWeekend ? 0 : Math.floor(Math.random() * 8) + 2; // de 2 a 9 turnos en la semana
+            
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `pill-btn calendar-pill ${slots === 0 ? 'disabled' : ''}`;
+            if(slots === 0) btn.disabled = true;
+            
+            const diaNombre = diasSemana[d.getDay()];
+            const diaNum = d.getDate();
+            const dateStr = d.toISOString().split('T')[0];
+            
+            btn.innerHTML = `
+                <span class="pill-date">${diaNombre} ${diaNum}</span>
+                <span class="pill-slots">${slots === 0 ? '(sin horarios)' : `(${slots} horarios)`}</span>
+            `;
+            
+            if(slots > 0) {
+                btn.addEventListener('click', () => {
+                    diasContainer.querySelectorAll('.calendar-pill').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    inputFecha.value = dateStr;
+                    showHorarios(slots);
+                });
+            }
+            diasContainer.appendChild(btn);
+        }
+    }
+
+    // Mostrar las horas para un día seleccionado
+    function showHorarios(numSlots) {
+        const c = document.getElementById('horarios-container');
+        const list = document.getElementById('horarios-list');
+        const inputHora = document.getElementById('turno-hora');
+        const btnSubmit = document.getElementById('btn-confirmar-turno');
+        
+        c.classList.remove('d-none');
+        list.innerHTML = '';
+        inputHora.value = '';
+        btnSubmit.classList.add('d-none');
+        
+        let horaBase = 9; // Empiezan 9 AM
+        for(let i=0; i<numSlots; i++) {
+            const h = horaBase + Math.floor(i/2);
+            const m = (i%2 === 0) ? '00' : '30';
+            const horaStr = `${h.toString().padStart(2, '0')}:${m}`;
+            
+            renderPill(list, horaStr, horaStr, inputHora, () => {
+                btnSubmit.classList.remove('d-none'); // Mostrar botón confirmar
+            });
+        }
+    }
 }
 
 // --- Gestión de Planes por Obra Social ---

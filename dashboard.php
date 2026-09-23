@@ -225,45 +225,67 @@
         <h1 class="modal-title fs-5 fw-bold">Solicitar Turno</h1>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body p-4">
         <form id="form-solicitar-turno">
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label fw-semibold text-muted small">Especialidad</label>
-                    <select class="form-select" id="turno-especialidad" required>
-                        <option value="" selected disabled>Selecciona especialidad...</option>
-                        <option value="1">Kinesiología</option>
-                        <option value="2">Fonoaudiología</option>
-                        <option value="3">Medicina General</option>
-                    </select>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label fw-semibold text-muted small">Profesional</label>
-                    <select class="form-select" id="turno-medico" required disabled>
-                        <option value="" selected disabled>Primero selecciona especialidad...</option>
-                    </select>
+            <!-- Paso 1: Especialidad y Profesional -->
+            <div id="step-1" class="mb-4">
+                <h5 class="fw-semibold text-muted mb-3"><i class="bi bi-person-badge me-2"></i>1. ¿Qué profesional buscas?</h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <select class="form-select shadow-sm" id="turno-especialidad" required>
+                            <option value="" selected disabled>Selecciona especialidad...</option>
+                            <!-- Cargado por JS -->
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <select class="form-select shadow-sm" id="turno-medico" required disabled>
+                            <option value="" selected disabled>Primero selecciona especialidad...</option>
+                            <!-- Cargado por JS -->
+                        </select>
+                    </div>
                 </div>
             </div>
             
-            <div class="mb-4">
-                <label class="form-label fw-semibold text-muted small">Obra Social</label>
-                <select class="form-select" id="turno-obra-social" required>
-                    <option value="" selected disabled>Cargando obras sociales...</option>
-                </select>
-            </div>
-            
-            <div class="mb-4">
-                <label class="form-label fw-semibold text-muted small">Plan</label>
-                <select class="form-select" id="turno-plan" required disabled>
-                    <option value="" selected disabled>Primero selecciona una obra social...</option>
-                </select>
+            <!-- Paso 2: Obra Social y Planes (Botones) -->
+            <div id="step-2" class="mb-4 d-none">
+                <hr class="text-muted opacity-25 my-4">
+                <h5 class="fw-semibold text-muted mb-3"><i class="bi bi-shield-check me-2"></i>2. ¿Qué cobertura y plan tienes?</h5>
+                
+                <div class="mb-3">
+                    <select class="form-select shadow-sm" id="turno-obra-social" required>
+                        <option value="" selected disabled>Selecciona tu cobertura médica...</option>
+                        <!-- Cargado por JS -->
+                    </select>
+                </div>
+                
+                <div id="planes-container" class="d-flex flex-wrap gap-2 mt-3 justify-content-center d-none">
+                    <!-- Botones píldora (Planes) se inyectan aquí -->
+                </div>
+                <input type="hidden" id="turno-plan" required>
             </div>
 
-            <!-- Grilla de Horarios (Placeholder) -->
-            <div class="border rounded p-3 bg-light text-center">
-                <p class="text-muted mb-0 small"><i class="bi bi-calendar-event me-2"></i>Selecciona las opciones superiores para ver los horarios disponibles.</p>
+            <!-- Paso 3: Calendario de Días y Horarios -->
+            <div id="step-3" class="mb-2 d-none">
+                <hr class="text-muted opacity-25 my-4">
+                <h5 class="fw-semibold text-muted mb-4 text-center"><i class="bi bi-calendar-event me-2"></i>3. ¿Qué día prefieres?</h5>
+                
+                <!-- Navegación de meses si fuera necesario -->
+                <div id="mes-label" class="text-center text-muted fw-bold mb-3 fs-5">Octubre</div>
+
+                <div id="dias-container" class="d-flex overflow-auto pb-3 gap-3 justify-content-start" style="scroll-snap-type: x mandatory; scroll-behavior: smooth;">
+                    <!-- Botones de días (Pills) se inyectan aquí -->
+                </div>
+                <input type="hidden" id="turno-fecha" required>
+
+                <!-- Horarios Disponibles -->
+                <div id="horarios-container" class="d-none mt-4">
+                    <h6 class="text-center text-muted mb-3">Horarios disponibles</h6>
+                    <div id="horarios-list" class="d-flex flex-wrap gap-2 justify-content-center">
+                        <!-- Píldoras de horas se inyectan aquí -->
+                    </div>
+                    <input type="hidden" id="turno-hora" required>
+                </div>
             </div>
-            
         </form>
       </div>
       <div class="modal-footer border-top-0 pt-0">
