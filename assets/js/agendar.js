@@ -338,11 +338,12 @@ window.wizardRenderCalendarioMock = function() {
     
     document.getElementById('wizard-mes-label').textContent = mesNombres[hoy.getMonth()];
 
-    for(let i=1; i<=14; i++) {
+    // Generate up to 90 days (3 months)
+    for(let i=1; i<=90; i++) {
         let d = new Date(hoy);
         d.setDate(hoy.getDate() + i);
         
-        if(d.getDay() === 0) continue;
+        if(d.getDay() === 0) continue; // Skip Sundays
         
         let diaNombre = dias[d.getDay()];
         let diaNumero = d.getDate();
@@ -362,6 +363,9 @@ window.wizardRenderCalendarioMock = function() {
         `;
         
         btn.onclick = () => {
+            // Actualizar etiqueta del mes basado en la selección
+            document.getElementById('wizard-mes-label').textContent = mesNombres[d.getMonth()] + (d.getFullYear() !== hoy.getFullYear() ? ' ' + d.getFullYear() : '');
+
             document.querySelectorAll('#wizard-dias-container .btn').forEach(b => {
                 b.classList.remove('btn-primary', 'text-white');
                 b.classList.add('btn-outline-primary');
@@ -424,18 +428,42 @@ document.getElementById('btn-cambiar-cobertura').addEventListener('click', () =>
 
 // Confirmar Turno
 document.getElementById('wizard-btn-confirmar').addEventListener('click', () => {
-    // Aquí es donde mandamos a Iniciar Sesión si no lo está.
-    // Guardamos la información del turno en LocalStorage como turno "pendiente"
-    localStorage.setItem('turno_pendiente', JSON.stringify(wizardData));
-    
     const currentUser = auth.currentUser;
+    
     if (currentUser) {
-        // Ya está logueado
-        alert(`¡Turno reservado exitosamente!\n\nMédico: ${wizardData.medicoNombre}\nEspecialidad: ${wizardData.especialidadNombre}\nFecha: ${wizardData.fecha}\nHora: ${wizardData.hora}\nCobertura: ${wizardData.coberturaNombre} ${wizardData.planNombre ? '- '+wizardData.planNombre : ''}`);
-        localStorage.removeItem('turno_pendiente');
-        window.location.href = 'dashboard.php';
+        // Change button state to loading
+        const btn = document.getElementById('wizard-btn-confirmar');
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Guardando...';
+        btn.disabled = true;
+
+        fetch('backend/api/save_turno.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                medico_id: wizardData.medicoId,
+                especialidad_id: wizardData.especialidadId,
+                cobertura_id: wizardData.coberturaId === 'particular' ? null : wizardData.coberturaId,
+                plan_id: wizardData.planId || null,
+                fecha: wizardData.fecha,
+                hora: wizardData.hora
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            alert(`¡Turno reservado exitosamente!\n\nMédico: ${wizardData.medicoNombre}\nEspecialidad: ${wizardData.especialidadNombre}\nFecha: ${wizardData.fecha}\nHora: ${wizardData.hora}\nCobertura: ${wizardData.coberturaNombre} ${wizardData.planNombre ? '- '+wizardData.planNombre : ''}`);
+            localStorage.removeItem('turno_pendiente');
+            window.location.href = 'dashboard.php';
+        })
+        .catch(err => {
+            console.error("Error al guardar el turno", err);
+            alert("Ocurrió un error al guardar tu turno. Por favor intenta de nuevo.");
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
+        });
     } else {
         // No está logueado, lo mandamos al login, y luego el login lo manda al dashboard que confirmará el turno.
+        localStorage.setItem('turno_pendiente', JSON.stringify(wizardData));
         window.location.href = 'login.php?redirect=confirmar_turno';
     }
 });

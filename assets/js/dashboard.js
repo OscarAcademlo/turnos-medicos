@@ -28,10 +28,30 @@ document.addEventListener('DOMContentLoaded', () => {
             const turnoPendiente = localStorage.getItem('turno_pendiente');
             if (turnoPendiente) {
                 const wizardData = JSON.parse(turnoPendiente);
-                alert(`¡Turno reservado exitosamente!\n\nMédico: ${wizardData.medicoNombre}\nEspecialidad: ${wizardData.especialidadNombre}\nFecha: ${wizardData.fecha}\nHora: ${wizardData.hora}\nCobertura: ${wizardData.coberturaNombre} ${wizardData.planNombre ? '- '+wizardData.planNombre : ''}`);
-                localStorage.removeItem('turno_pendiente');
-                // Ir a mis turnos
-                setTimeout(() => document.getElementById('menu-turnos').click(), 500);
+                
+                // Realizar POST a save_turno.php
+                fetch('backend/api/save_turno.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        medico_id: wizardData.medicoId,
+                        especialidad_id: wizardData.especialidadId,
+                        cobertura_id: wizardData.coberturaId === 'particular' ? null : wizardData.coberturaId,
+                        plan_id: wizardData.planId || null,
+                        fecha: wizardData.fecha,
+                        hora: wizardData.hora
+                    })
+                })
+                .then(res => res.json())
+                .then(saveRes => {
+                    alert(`¡Turno reservado exitosamente!\n\nMédico: ${wizardData.medicoNombre}\nEspecialidad: ${wizardData.especialidadNombre}\nFecha: ${wizardData.fecha}\nHora: ${wizardData.hora}\nCobertura: ${wizardData.coberturaNombre} ${wizardData.planNombre ? '- '+wizardData.planNombre : ''}`);
+                    localStorage.removeItem('turno_pendiente');
+                    setTimeout(() => document.getElementById('menu-turnos').click(), 500);
+                })
+                .catch(err => {
+                    console.error("Error guardando turno", err);
+                    alert("Ocurrió un error guardando el turno. Intenta de nuevo.");
+                });
             }
 
 
@@ -110,6 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
         menuTurnos.addEventListener('click', (e) => {
             e.preventDefault();
             mostrarVista(contentTurnos, menuTurnos, 'Mis Turnos');
+            cargarMisTurnos();
         });
     }
 
@@ -122,6 +143,102 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 });
+
+function cargarMisTurnos() {
+    const container = document.getElementById('mis-turnos-container');
+    container.innerHTML = `
+        <div class="text-center text-muted py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2">Cargando tus turnos...</p>
+        </div>
+    `;
+
+    fetch('backend/api/get_mis_turnos.php')
+        .then(res => res.json())
+        .then(data => {
+            container.innerHTML = '';
+            if(!data || data.length === 0 || data.message) {
+                container.innerHTML = `
+                    <div class="alert alert-info rounded-4 shadow-sm border-0 d-flex align-items-center" role="alert">
+                        <i class="bi bi-info-circle-fill fs-4 me-3"></i>
+                        <div>Todavía no tienes turnos programados. Haz clic en "Solicitar Turno" para agendar uno.</div>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '<div class="row g-4">';
+            data.forEach(turno => {
+                // Formatear fecha (YYYY-MM-DD a DD/MM/YYYY)
+                const partes = turno.fecha.split('-');
+                const fechaFormat = `${partes[2]}/${partes[1]}/${partes[0]}`;
+                
+                // Formatear hora (HH:MM:SS a HH:MM)
+                const horaFormat = turno.hora_inicio.substring(0, 5);
+
+                let badgeColor = 'bg-warning';
+                if(turno.estado === 'confirmado') badgeColor = 'bg-success';
+                if(turno.estado === 'cancelado') badgeColor = 'bg-danger';
+
+                let coberturaText = 'Particular';
+                if(turno.obra_social_nombre) {
+                    coberturaText = turno.obra_social_nombre;
+                    if(turno.plan_nombre) coberturaText += ' - ' + turno.plan_nombre;
+                }
+
+                html += `
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden position-relative">
+                            <div class="card-body p-4">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <h5 class="fw-bold mb-0 text-primary">
+                                        <i class="bi bi-calendar-check me-2"></i>${fechaFormat}
+                                    </h5>
+                                    <span class="badge ${badgeColor} rounded-pill px-3 py-2 text-uppercase" style="font-size: 0.7rem;">
+                                        ${turno.estado}
+                                    </span>
+                                </div>
+                                
+                                <div class="fs-4 fw-light mb-3">
+                                    <i class="bi bi-clock me-2 text-muted fs-5"></i>${horaFormat} hs
+                                </div>
+                                
+                                <hr class="opacity-10 my-3">
+                                
+                                <div class="mb-2">
+                                    <i class="bi bi-person-badge text-muted me-2"></i>
+                                    <span class="fw-semibold">Dr/a. ${turno.medico_nombre} ${turno.medico_apellido}</span>
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <i class="bi bi-heart-pulse text-muted me-2"></i>
+                                    <span>${turno.especialidad_nombre}</span>
+                                </div>
+                                
+                                <div>
+                                    <i class="bi bi-shield-check text-muted me-2"></i>
+                                    <span class="text-muted small">${coberturaText}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        })
+        .catch(err => {
+            console.error("Error al cargar mis turnos:", err);
+            container.innerHTML = `
+                <div class="alert alert-danger rounded-4 shadow-sm border-0 d-flex align-items-center" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+                    <div>Ocurrió un error al cargar tus turnos.</div>
+                </div>
+            `;
+        });
+}
 
 // Función para cargar usuarios desde la base de datos
 function cargarUsuarios() {

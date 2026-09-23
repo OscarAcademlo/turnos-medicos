@@ -208,9 +208,13 @@
                     </button>
                 </div>
 
-                <div class="alert alert-info rounded-4 shadow-sm border-0 d-flex align-items-center" role="alert">
-                    <i class="bi bi-info-circle-fill fs-4 me-3"></i>
-                    <div>Todavía no tienes turnos programados. Haz clic en "Solicitar Turno" para agendar uno.</div>
+                <div id="mis-turnos-container" class="mt-4">
+                    <div class="text-center text-muted py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <p class="mt-2">Cargando tus turnos...</p>
+                    </div>
                 </div>
             </div>
 
