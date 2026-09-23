@@ -1,6 +1,42 @@
 let medicosGlobal = [];
 window.medicosGlobal = medicosGlobal;
 
+// Helper: Avatar por defecto según género
+function obtenerAvatarDefault(nombre, apellido) {
+    const texto = `${nombre || ''} ${apellido || ''}`.trim().toLowerCase();
+    
+    if (/\bdra\.?\b|\bdoctora\b/.test(texto)) {
+        return 'assets/img/avatar_doctora.jpg';
+    }
+    if (/\bdr\.?\b|\bdoctor\b/.test(texto)) {
+        return 'assets/img/avatar_doctor.jpg';
+    }
+
+    const primerNombre = (nombre || '').trim().split(' ')[0].toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    
+    const nombresFemeninos = new Set([
+        'maria', 'ana', 'laura', 'paula', 'sofia', 'florencia', 'julieta', 'camila',
+        'valentina', 'carolina', 'mariana', 'andrea', 'claudia', 'patricia', 'natalia',
+        'daniela', 'luciana', 'cecilia', 'silvina', 'romina', 'marcela', 'gabriela',
+        'silvia', 'veronica', 'monica', 'beatriz', 'mercedes', 'rosario', 'victoria',
+        'elena', 'ines', 'teresa', 'susana', 'marta', 'graciela', 'lucia', 'guadalupe',
+        'estefania', 'belen', 'micaela', 'agustina', 'antonella', 'valeria', 'sabrina'
+    ]);
+
+    if (nombresFemeninos.has(primerNombre)) {
+        return 'assets/img/avatar_doctora.jpg';
+    }
+
+    const excepcionesMasculinas = new Set(['luca', 'lucas', 'borja', 'bautista', 'sasha']);
+    if (primerNombre.endsWith('a') && !excepcionesMasculinas.has(primerNombre)) {
+        return 'assets/img/avatar_doctora.jpg';
+    }
+
+    return 'assets/img/avatar_doctor.jpg';
+}
+
+
 document.addEventListener('DOMContentLoaded', () => {
     const filterNombre = document.getElementById('filter-nombre');
     const filterEspecialidad = document.getElementById('filter-especialidad');
@@ -90,8 +126,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         horariosHtml = `<div class="text-muted small py-1"><i class="bi bi-calendar-x me-1"></i> Sin horarios cargados</div>`;
                     }
 
-                    // Foto del médico o fallback de iniciales
-                    const avatarDefault = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(medico.nombre + ' ' + medico.apellido) + '&background=e9ecef&color=6c757d&size=200';
+                    // Foto del médico o fallback por género
+                    const avatarDefault = obtenerAvatarDefault(medico.nombre, medico.apellido);
                     const fotoUrl = (medico.foto_perfil && medico.foto_perfil.trim() !== '') 
                         ? medico.foto_perfil 
                         : ((medico.foto_url && medico.foto_url.trim() !== '') ? medico.foto_url : avatarDefault);

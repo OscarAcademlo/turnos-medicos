@@ -595,7 +595,11 @@
       <div class="modal-body p-4">
         <form id="form-coberturas-medico">
             <input type="hidden" id="coberturas-medico-id">
-            <div id="coberturas-list-container" class="mb-4">
+            <div class="position-relative mb-3">
+                <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+                <input type="text" id="search-coberturas-modal" class="form-control rounded-pill ps-5 bg-light border-0 py-2" placeholder="Buscar obra social o plan (ej: OSDE, Swiss, Galeno...)" autocomplete="off">
+            </div>
+            <div id="coberturas-list-container" class="mb-4" style="max-height: 380px; overflow-y: auto;">
                 <!-- Se llenará dinámicamente -->
             </div>
             <button type="submit" class="btn btn-primary w-100 rounded-pill py-2 fw-bold">Guardar Coberturas</button>

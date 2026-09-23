@@ -1,3 +1,38 @@
+// Helper: Avatar por defecto según género
+function obtenerAvatarDefault(nombre, apellido) {
+    const texto = `${nombre || ''} ${apellido || ''}`.trim().toLowerCase();
+    
+    if (/\bdra\.?\b|\bdoctora\b/.test(texto)) {
+        return 'assets/img/avatar_doctora.jpg';
+    }
+    if (/\bdr\.?\b|\bdoctor\b/.test(texto)) {
+        return 'assets/img/avatar_doctor.jpg';
+    }
+
+    const primerNombre = (nombre || '').trim().split(' ')[0].toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    
+    const nombresFemeninos = new Set([
+        'maria', 'ana', 'laura', 'paula', 'sofia', 'florencia', 'julieta', 'camila',
+        'valentina', 'carolina', 'mariana', 'andrea', 'claudia', 'patricia', 'natalia',
+        'daniela', 'luciana', 'cecilia', 'silvina', 'romina', 'marcela', 'gabriela',
+        'silvia', 'veronica', 'monica', 'beatriz', 'mercedes', 'rosario', 'victoria',
+        'elena', 'ines', 'teresa', 'susana', 'marta', 'graciela', 'lucia', 'guadalupe',
+        'estefania', 'belen', 'micaela', 'agustina', 'antonella', 'valeria', 'sabrina'
+    ]);
+
+    if (nombresFemeninos.has(primerNombre)) {
+        return 'assets/img/avatar_doctora.jpg';
+    }
+
+    const excepcionesMasculinas = new Set(['luca', 'lucas', 'borja', 'bautista', 'sasha']);
+    if (primerNombre.endsWith('a') && !excepcionesMasculinas.has(primerNombre)) {
+        return 'assets/img/avatar_doctora.jpg';
+    }
+
+    return 'assets/img/avatar_doctor.jpg';
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const userJson = localStorage.getItem('user');
     
@@ -197,7 +232,10 @@ function cargarMisTurnos() {
     `;
 
     fetch('backend/api/get_mis_turnos.php')
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+        })
         .then(data => {
             const contadorEl = document.getElementById('contador-proximos-turnos');
             if (contadorEl) {
@@ -947,9 +985,10 @@ function renderMedicos(medicos) {
     }
 
     medicos.forEach(med => {
+        const defaultAvatar = obtenerAvatarDefault(med.nombre, med.apellido);
         const fotoHtml = med.foto_perfil
-            ? `<img src="${med.foto_perfil}" class="rounded-circle mb-3 object-fit-cover" width="100" height="100" style="border: 3px solid #e9ecef;">`
-            : `<div class="rounded-circle mb-3 bg-light d-inline-flex align-items-center justify-content-center" style="width:100px;height:100px;border:3px solid #e9ecef;"><i class="bi bi-person-fill text-secondary" style="font-size:3rem;"></i></div>`;
+            ? `<img src="${med.foto_perfil}" class="rounded-circle mb-3 object-fit-cover shadow-sm" width="100" height="100" style="border: 3px solid #e9ecef;" onerror="this.onerror=null;this.src='${defaultAvatar}';">`
+            : `<img src="${defaultAvatar}" class="rounded-circle mb-3 object-fit-cover shadow-sm" width="100" height="100" style="border: 3px solid #e9ecef;">`;
         
         const horariosResumen = med.horarios && med.horarios.length > 0
             ? med.horarios.map(h => {
@@ -1030,14 +1069,15 @@ function abrirEditMedico(id) {
     // Manejar foto: mostrar imagen si existe, o placeholder
     const preview = document.getElementById('edit-medico-foto-preview');
     const placeholder = document.getElementById('edit-medico-foto-placeholder');
+    const defaultAvatar = obtenerAvatarDefault(med.nombre, med.apellido);
     if(med.foto_perfil) {
         preview.src = med.foto_perfil;
         preview.classList.remove('d-none');
         placeholder.classList.add('d-none');
     } else {
-        preview.src = '';
-        preview.classList.add('d-none');
-        placeholder.classList.remove('d-none');
+        preview.src = defaultAvatar;
+        preview.classList.remove('d-none');
+        placeholder.classList.add('d-none');
     }
     
     const modal = new bootstrap.Modal(document.getElementById('modalEditMedico'));
@@ -1212,7 +1252,7 @@ function abrirCoberturasMedico(id) {
         const osChecked = obrasMed.includes(os.id) || (tienePlanes && os.planes.some(p => planesMed.includes(p.id)));
         
         html += `
-            <div class="card mb-3 border-0 shadow-sm rounded-3">
+            <div class="card mb-3 border-0 shadow-sm rounded-3 card-cobertura-item">
                 <div class="card-header bg-light border-0 d-flex justify-content-between align-items-center">
                     <div class="form-check mb-0">
                         <input class="form-check-input check-os-medico" type="checkbox" value="${os.id}" id="os-check-${os.id}" ${osChecked ? 'checked' : ''} onchange="togglePlanesOS(${os.id}, this.checked)">
@@ -1242,8 +1282,42 @@ function abrirCoberturasMedico(id) {
     });
     
     container.innerHTML = html;
+
+    // Configurar buscador en tiempo real dentro del modal
+    const searchInput = document.getElementById('search-coberturas-modal');
+    if (searchInput) {
+        searchInput.value = '';
+        searchInput.oninput = function(e) {
+            const query = e.target.value.toLowerCase().trim();
+            const items = container.querySelectorAll('.card-cobertura-item');
+            let encontrados = 0;
+            items.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                if (!query || text.includes(query)) {
+                    item.classList.remove('d-none');
+                    encontrados++;
+                } else {
+                    item.classList.add('d-none');
+                }
+            });
+
+            let noResultsMsg = document.getElementById('no-coberturas-search-msg');
+            if (encontrados === 0 && query) {
+                if (!noResultsMsg) {
+                    noResultsMsg = document.createElement('div');
+                    noResultsMsg.id = 'no-coberturas-search-msg';
+                    noResultsMsg.className = 'alert alert-info text-center small py-3 mt-2';
+                    container.appendChild(noResultsMsg);
+                }
+                noResultsMsg.innerHTML = `<i class="bi bi-search me-1"></i> No se encontraron coberturas ni planes para "<strong>${e.target.value}</strong>".`;
+                noResultsMsg.classList.remove('d-none');
+            } else if (noResultsMsg) {
+                noResultsMsg.classList.add('d-none');
+            }
+        };
+    }
     
-    const modal = new bootstrap.Modal(document.getElementById('modalCoberturasMedico'));
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalCoberturasMedico'));
     modal.show();
 }
 

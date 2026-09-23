@@ -19,39 +19,90 @@ $db = $database->getConnection();
 $paciente_id = $_SESSION['user_id'];
 $is_admin = in_array($_SESSION['rol'] ?? '', ['superadmin', 'admin', 'recepcionista']);
 
-$query_base = "
-    SELECT 
-        t.id, t.fecha, t.hora_inicio, t.estado,
-        u.nombre as medico_nombre,
-        u.apellido as medico_apellido,
-        COALESCE(e.nombre, 'Consulta General') as especialidad_nombre,
-        o.nombre as obra_social_nombre,
-        p.nombre as plan_nombre,
-        pac.nombre as paciente_nombre,
-        pac.apellido as paciente_apellido,
-        uat.nombre as sede_nombre,
-        uat.calle as sede_calle,
-        uat.numero as sede_numero
-    FROM turnos t
-    LEFT JOIN usuarios u ON t.medico_id = u.id
-    LEFT JOIN especialidades e ON t.especialidad_id = e.id
-    LEFT JOIN obras_sociales o ON t.obra_social_id = o.id
-    LEFT JOIN planes_obras_sociales p ON t.plan_id = p.id
-    LEFT JOIN usuarios pac ON t.paciente_id = pac.id
-    LEFT JOIN unidades_atencion uat ON t.unidad_id = uat.id
-";
+// Auto-healing: asegurar que unidades_atencion exista y que turnos tenga unidad_id
+try {
+    $db->exec("CREATE TABLE IF NOT EXISTS unidades_atencion (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nombre VARCHAR(150) NOT NULL,
+        calle VARCHAR(150) NULL,
+        numero VARCHAR(20) NULL,
+        localidad VARCHAR(100) NULL,
+        activa TINYINT(1) DEFAULT 1,
+        creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )");
 
-if ($is_admin) {
-    $query = $query_base . " ORDER BY t.fecha DESC, t.hora_inicio DESC";
-    $stmt = $db->prepare($query);
-} else {
-    $query = $query_base . " WHERE t.paciente_id = :paciente_id ORDER BY t.fecha DESC, t.hora_inicio DESC";
-    $stmt = $db->prepare($query);
-    $stmt->bindParam(":paciente_id", $paciente_id);
+    $cols = $db->query("SHOW COLUMNS FROM turnos LIKE 'unidad_id'")->fetchAll();
+    if(empty($cols)) {
+        $db->exec("ALTER TABLE turnos ADD COLUMN unidad_id INT NULL");
+    }
+} catch(Exception $e) { /* silencioso */ }
+
+try {
+    $query_base = "
+        SELECT 
+            t.id, t.fecha, t.hora_inicio, t.estado,
+            u.nombre as medico_nombre,
+            u.apellido as medico_apellido,
+            COALESCE(e.nombre, 'Consulta General') as especialidad_nombre,
+            o.nombre as obra_social_nombre,
+            p.nombre as plan_nombre,
+            pac.nombre as paciente_nombre,
+            pac.apellido as paciente_apellido,
+            uat.nombre as sede_nombre,
+            uat.calle as sede_calle,
+            uat.numero as sede_numero
+        FROM turnos t
+        LEFT JOIN usuarios u ON t.medico_id = u.id
+        LEFT JOIN especialidades e ON t.especialidad_id = e.id
+        LEFT JOIN obras_sociales o ON t.obra_social_id = o.id
+        LEFT JOIN planes_obras_sociales p ON t.plan_id = p.id
+        LEFT JOIN usuarios pac ON t.paciente_id = pac.id
+        LEFT JOIN unidades_atencion uat ON t.unidad_id = uat.id
+    ";
+
+    if ($is_admin) {
+        $query = $query_base . " ORDER BY t.fecha DESC, t.hora_inicio DESC";
+        $stmt = $db->prepare($query);
+    } else {
+        $query = $query_base . " WHERE t.paciente_id = :paciente_id ORDER BY t.fecha DESC, t.hora_inicio DESC";
+        $stmt = $db->prepare($query);
+        $stmt->bindParam(":paciente_id", $paciente_id);
+    }
+
+    $stmt->execute();
+    $turnos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    echo json_encode($turnos ?: []);
+} catch(Exception $e) {
+    // Fallback de contingencia si fallara el JOIN con unidades_atencion
+    try {
+        $fallback_query = "
+            SELECT 
+                t.id, t.fecha, t.hora_inicio, t.estado,
+                u.nombre as medico_nombre,
+                u.apellido as medico_apellido,
+                COALESCE(e.nombre, 'Consulta General') as especialidad_nombre,
+                o.nombre as obra_social_nombre,
+                p.nombre as plan_nombre,
+                pac.nombre as paciente_nombre,
+                pac.apellido as paciente_apellido
+            FROM turnos t
+            LEFT JOIN usuarios u ON t.medico_id = u.id
+            LEFT JOIN especialidades e ON t.especialidad_id = e.id
+            LEFT JOIN obras_sociales o ON t.obra_social_id = o.id
+            LEFT JOIN planes_obras_sociales p ON t.plan_id = p.id
+            LEFT JOIN usuarios pac ON t.paciente_id = pac.id
+        ";
+        if ($is_admin) {
+            $stmt = $db->prepare($fallback_query . " ORDER BY t.fecha DESC, t.hora_inicio DESC");
+        } else {
+            $stmt = $db->prepare($fallback_query . " WHERE t.paciente_id = :paciente_id ORDER BY t.fecha DESC, t.hora_inicio DESC");
+            $stmt->bindParam(":paciente_id", $paciente_id);
+        }
+        $stmt->execute();
+        $turnos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        echo json_encode($turnos ?: []);
+    } catch(Exception $ex) {
+        echo json_encode([]);
+    }
 }
-
-$stmt->execute();
-$turnos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-echo json_encode($turnos);
 ?>

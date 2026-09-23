@@ -14,6 +14,50 @@ let wizardData = {
     hora: null
 };
 
+// Helper: Avatar por defecto según género
+function obtenerAvatarDefault(nombre, apellido) {
+    const texto = `${nombre || ''} ${apellido || ''}`.trim().toLowerCase();
+    
+    // Si contiene "dra" o "doctora"
+    if (/\bdra\.?\b|\bdoctora\b/.test(texto)) {
+        return 'assets/img/avatar_doctora.jpg';
+    }
+    // Si contiene "dr" o "doctor"
+    if (/\bdr\.?\b|\bdoctor\b/.test(texto)) {
+        return 'assets/img/avatar_doctor.jpg';
+    }
+
+    const primerNombre = (nombre || '').trim().split(' ')[0].toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    
+    const nombresFemeninos = new Set([
+        'maria', 'ana', 'laura', 'paula', 'sofia', 'florencia', 'julieta', 'camila',
+        'valentina', 'carolina', 'mariana', 'andrea', 'claudia', 'patricia', 'natalia',
+        'daniela', 'luciana', 'cecilia', 'silvina', 'romina', 'marcela', 'gabriela',
+        'silvia', 'veronica', 'monica', 'beatriz', 'mercedes', 'rosario', 'victoria',
+        'elena', 'ines', 'teresa', 'susana', 'marta', 'graciela', 'lucia', 'guadalupe',
+        'estefania', 'belen', 'micaela', 'agustina', 'antonella', 'valeria', 'sabrina'
+    ]);
+
+    if (nombresFemeninos.has(primerNombre)) {
+        return 'assets/img/avatar_doctora.jpg';
+    }
+
+    const excepcionesMasculinas = new Set(['luca', 'lucas', 'borja', 'bautista', 'sasha']);
+    if (primerNombre.endsWith('a') && !excepcionesMasculinas.has(primerNombre)) {
+        return 'assets/img/avatar_doctora.jpg';
+    }
+
+    return 'assets/img/avatar_doctor.jpg';
+}
+
+// Helper: Normalizar texto de días sin tildes
+function normalizarDia(str) {
+    if (!str) return '';
+    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
+
 // Check if user is logged in to change the header button
 auth.onAuthStateChanged((firebaseUser) => {
     const authSection = document.getElementById('header-auth-section');
@@ -102,8 +146,13 @@ function iniciarWizardReserva(medicoId) {
 
                 const foto = med.foto_perfil || med.foto_url;
                 const avatarContainer = document.getElementById('wizard-avatar-container');
-                if (avatarContainer && foto && foto.trim() !== '') {
-                    avatarContainer.innerHTML = `<img src="${foto}" alt="${nombreCompleto}" class="w-100 h-100 object-fit-cover">`;
+                const defaultAvatar = obtenerAvatarDefault(med.nombre, med.apellido);
+                if (avatarContainer) {
+                    if (foto && foto.trim() !== '') {
+                        avatarContainer.innerHTML = `<img src="${foto}" alt="${nombreCompleto}" class="w-100 h-100 object-fit-cover" onerror="this.onerror=null;this.src='${defaultAvatar}';">`;
+                    } else {
+                        avatarContainer.innerHTML = `<img src="${defaultAvatar}" alt="${nombreCompleto}" class="w-100 h-100 object-fit-cover">`;
+                    }
                 }
             } else {
                 alert("Profesional no encontrado.");
@@ -361,8 +410,11 @@ window.wizardRenderCalendarioMock = function() {
             
             const hoy = new Date();
             const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+            const diasMap = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
             const mesNombres = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
             
+            const tieneHorariosCargados = wizardData.medico && Array.isArray(wizardData.medico.horarios) && wizardData.medico.horarios.length > 0;
+
             let currentMonth = -1;
             let monthContainer = null;
 
@@ -388,8 +440,49 @@ window.wizardRenderCalendarioMock = function() {
                 }
                 
                 let diaNombre = dias[d.getDay()];
+                let diaNorm = diasMap[d.getDay()];
                 let diaNumero = d.getDate();
-                let cupos = Math.floor(Math.random() * 10) + 1;
+                
+                const bloquesDelDia = tieneHorariosCargados 
+                    ? wizardData.medico.horarios.filter(h => normalizarDia(h.dia_semana) === diaNorm) 
+                    : [];
+
+                // Si el médico tiene horarios configurados pero no atiende este día de la semana
+                if (tieneHorariosCargados && bloquesDelDia.length === 0) {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn btn-light m-2 d-flex flex-column align-items-center justify-content-center shadow-none text-muted opacity-50';
+                    btn.style.width = '110px';
+                    btn.style.height = '110px';
+                    btn.style.borderRadius = '20px';
+                    btn.style.cursor = 'not-allowed';
+                    btn.disabled = true;
+                    btn.innerHTML = `
+                        <span class="text-uppercase fw-bold text-muted mb-1" style="font-size:0.8rem">${diaNombre}</span>
+                        <span class="fs-2 fw-semibold mb-1 text-muted">${diaNumero}</span>
+                        <small class="text-muted" style="font-size:0.7rem">Sin atención</small>
+                    `;
+                    monthContainer.appendChild(btn);
+                    continue;
+                }
+
+                // Calcular cantidad real de turnos disponibles según horarios y duración seteada
+                let cupos = 0;
+                if (bloquesDelDia.length > 0) {
+                    bloquesDelDia.forEach(bloque => {
+                        const duracion = parseInt(bloque.duracion_turno_minutos) || 30;
+                        const [hIni, mIni] = (bloque.hora_inicio || '08:00').split(':').map(Number);
+                        let [hFin, mFin] = (bloque.hora_fin || '12:00').split(':').map(Number);
+                        if (hFin === 0 && mFin === 0) hFin = 14;
+                        let cur = hIni * 60 + mIni;
+                        const end = hFin * 60 + mFin;
+                        while (cur + duracion <= end) {
+                            cupos++;
+                            cur += duracion;
+                        }
+                    });
+                } else {
+                    cupos = 6;
+                }
                 
                 const btn = document.createElement('button');
                 btn.className = 'btn btn-outline-primary m-2 d-flex flex-column align-items-center justify-content-center shadow-sm';
@@ -408,7 +501,6 @@ window.wizardRenderCalendarioMock = function() {
                     const yaSeleccionado = btn.classList.contains('btn-primary');
                     
                     if (yaSeleccionado) {
-                        // Desmarcar al hacer clic de nuevo
                         btn.classList.remove('btn-primary', 'text-white');
                         btn.classList.add('btn-outline-primary');
                         btn.querySelectorAll('.text-muted').forEach(el => el.classList.remove('text-white-50'));
@@ -420,7 +512,6 @@ window.wizardRenderCalendarioMock = function() {
                         return;
                     }
 
-                    // Marcar este botón y desmarcar todos los demás
                     document.querySelectorAll('#wizard-dias-container .btn').forEach(b => {
                         b.classList.remove('btn-primary', 'text-white');
                         b.classList.add('btn-outline-primary');
@@ -430,7 +521,10 @@ window.wizardRenderCalendarioMock = function() {
                     btn.classList.add('btn-primary', 'text-white');
                     btn.querySelectorAll('.text-muted').forEach(el => el.classList.add('text-white-50'));
                     
-                    wizardData.fecha = d.toISOString().split('T')[0];
+                    const year = d.getFullYear();
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    wizardData.fecha = `${year}-${month}-${day}`;
                     wizardAbrirModalHorarios(d);
                 };
                 
@@ -457,19 +551,20 @@ window.wizardAbrirModalHorarios = function(dateObj) {
     wizardData.hora = null;
 
     const diasNombres = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-    const diasClaves = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
+    const diasMap = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
     const mesNombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
     const diaNombre = diasNombres[dateObj.getDay()];
-    const diaClave = diasClaves[dateObj.getDay()];
+    const diaNorm = diasMap[dateObj.getDay()];
     const diaNumero = dateObj.getDate();
     const mesNombre = mesNombres[dateObj.getMonth()];
 
     labelFecha.textContent = `${diaNombre} ${diaNumero} de ${mesNombre}`;
 
-    // Buscar si el médico tiene horario cargado para este día
-    const horariosDelDia = (wizardData.medico && wizardData.medico.horarios)
-        ? wizardData.medico.horarios.filter(h => h.dia_semana.toLowerCase() === diaClave.toLowerCase())
+    // Buscar si el médico tiene horario cargado para este día (insensible a acentos/mayúsculas)
+    const tieneHorariosCargados = wizardData.medico && Array.isArray(wizardData.medico.horarios) && wizardData.medico.horarios.length > 0;
+    const horariosDelDia = tieneHorariosCargados
+        ? wizardData.medico.horarios.filter(h => normalizarDia(h.dia_semana) === diaNorm)
         : [];
 
     if (horariosDelDia.length > 0) {
@@ -499,7 +594,9 @@ window.wizardAbrirModalHorarios = function(dateObj) {
             let cur = hIni * 60 + mIni;
             const end = hFin * 60 + mFin;
             
-            while(cur < end) {
+            let haySlots = false;
+            while(cur + duracion <= end) {
+                haySlots = true;
                 const hr = Math.floor(cur / 60);
                 const mn = cur % 60;
                 const timeStr = `${String(hr).padStart(2, '0')}:${String(mn).padStart(2, '0')}`;
@@ -526,7 +623,20 @@ window.wizardAbrirModalHorarios = function(dateObj) {
                 list.appendChild(btn);
                 cur += duracion;
             }
+            if (!haySlots) {
+                list.innerHTML = `<div class="p-3 text-muted">No hay horarios disponibles en el rango de atención.</div>`;
+            }
         });
+    } else if (tieneHorariosCargados) {
+        sedeBanner.innerHTML = '';
+        sedeBanner.classList.add('d-none');
+        list.innerHTML = `
+            <div class="py-4 text-center">
+                <i class="bi bi-calendar-x text-warning fs-1 d-block mb-2"></i>
+                <h6 class="fw-bold mb-1">Sin turnos para este día</h6>
+                <p class="text-muted small mb-0">El profesional no atiende los días ${diaNombre}. Por favor elige otro día en el calendario.</p>
+            </div>
+        `;
     } else {
         sedeBanner.innerHTML = '';
         sedeBanner.classList.add('d-none');
