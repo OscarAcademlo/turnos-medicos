@@ -138,6 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             mostrarVista(contentMedicos, menuMedicos, 'Gestión de Médicos');
             cargarMedicosAdmin();
+            cargarSedes(); // Necesario para el modal de Horarios
         });
     }
 
@@ -146,6 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             mostrarVista(contentConfiguracion, menuConfiguracion, 'Configuración del Sistema');
             cargarConfiguracion();
+            cargarSedes();
         });
     }
 
@@ -905,19 +907,29 @@ function renderMedicos(medicos) {
     }
 
     medicos.forEach(med => {
-        const foto = med.foto_perfil || 'assets/images/default-avatar.png';
+        const fotoHtml = med.foto_perfil
+            ? `<img src="${med.foto_perfil}" class="rounded-circle mb-3 object-fit-cover" width="100" height="100" style="border: 3px solid #e9ecef;">`
+            : `<div class="rounded-circle mb-3 bg-light d-inline-flex align-items-center justify-content-center" style="width:100px;height:100px;border:3px solid #e9ecef;"><i class="bi bi-person-fill text-secondary" style="font-size:3rem;"></i></div>`;
+        
+        const horariosResumen = med.horarios && med.horarios.length > 0
+            ? med.horarios.map(h => `<span class="badge bg-light text-dark border me-1 mb-1">${h.dia_semana} ${h.hora_inicio.slice(0,5)}-${h.hora_fin.slice(0,5)}</span>`).join('')
+            : `<span class="text-muted small">Sin horarios configurados</span>`;
+        
         const html = `
             <div class="col-md-6 col-lg-4">
-                <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden position-relative">
+                <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden">
                     <div class="card-body p-4 text-center">
-                        <img src="${foto}" class="rounded-circle mb-3 object-fit-cover" width="100" height="100" style="border: 3px solid #e9ecef;">
+                        ${fotoHtml}
                         <h5 class="fw-bold mb-1">Dr/a. ${med.nombre} ${med.apellido}</h5>
                         <p class="text-muted small mb-1">${med.especialidad_nombre || 'Sin especialidad'}</p>
-                        <p class="text-muted small mb-3">Matrícula: ${med.matricula || 'No especificada'}</p>
-                        
+                        <p class="text-muted small mb-2">Matrícula: ${med.matricula || 'No especificada'}</p>
+                        <div class="mb-3 text-start px-2">${horariosResumen}</div>
                         <div class="d-grid gap-2">
                             <button class="btn btn-outline-primary btn-sm rounded-pill" onclick="abrirEditMedico(${med.id})">
                                 <i class="bi bi-pencil-square me-1"></i> Editar Perfil
+                            </button>
+                            <button class="btn btn-outline-warning btn-sm rounded-pill" onclick="abrirHorariosMedico(${med.id})">
+                                <i class="bi bi-clock me-1"></i> Horarios (${med.horarios ? med.horarios.length : 0})
                             </button>
                             <button class="btn btn-outline-success btn-sm rounded-pill" onclick="abrirCoberturasMedico(${med.id})">
                                 <i class="bi bi-shield-check me-1"></i> Coberturas (${med.planes ? med.planes.length : 0})
@@ -950,8 +962,20 @@ function abrirEditMedico(id) {
     document.getElementById('edit-medico-matricula').value = med.matricula || '';
     document.getElementById('edit-medico-direccion').value = med.direccion || '';
     document.getElementById('edit-medico-biografia').value = med.biografia || '';
-    document.getElementById('edit-medico-foto-preview').src = med.foto_perfil || 'assets/images/default-avatar.png';
     document.getElementById('edit-medico-foto').value = '';
+    
+    // Manejar foto: mostrar imagen si existe, o placeholder
+    const preview = document.getElementById('edit-medico-foto-preview');
+    const placeholder = document.getElementById('edit-medico-foto-placeholder');
+    if(med.foto_perfil) {
+        preview.src = med.foto_perfil;
+        preview.classList.remove('d-none');
+        placeholder.classList.add('d-none');
+    } else {
+        preview.src = '';
+        preview.classList.add('d-none');
+        placeholder.classList.remove('d-none');
+    }
     
     const modal = new bootstrap.Modal(document.getElementById('modalEditMedico'));
     modal.show();
@@ -972,7 +996,13 @@ document.getElementById('edit-medico-foto').addEventListener('change', function(
     .then(res => res.json())
     .then(data => {
         if(data.url) {
-            document.getElementById('edit-medico-foto-preview').src = data.url;
+            const preview = document.getElementById('edit-medico-foto-preview');
+            const placeholder = document.getElementById('edit-medico-foto-placeholder');
+            // Guardar la URL relativa como data attribute para no perderla
+            preview.src = data.url;
+            preview.setAttribute('data-url-relativa', data.url);
+            preview.classList.remove('d-none');
+            placeholder.classList.add('d-none');
         } else {
             alert(data.message || 'Error al subir imagen');
         }
@@ -986,18 +1016,23 @@ document.getElementById('form-edit-medico').addEventListener('submit', function(
     const btn = this.querySelector('button[type="submit"]');
     btn.disabled = true;
     
+    const preview = document.getElementById('edit-medico-foto-preview');
+    // Preferir la URL relativa guardada en el data attribute; fallback al src
+    let fotoUrl = preview.getAttribute('data-url-relativa') || preview.getAttribute('src') || null;
+    // Limpiar si es URL absoluta del servidor (convertir a relativa)
+    if(fotoUrl && fotoUrl.includes('/img/medicos/')) {
+        fotoUrl = 'img/medicos/' + fotoUrl.split('/img/medicos/').pop();
+    }
+    // Si el img está oculto (placeholder activo), no hay foto
+    if(preview.classList.contains('d-none')) fotoUrl = null;
+    
     const payload = {
         id: document.getElementById('edit-medico-id').value,
         matricula: document.getElementById('edit-medico-matricula').value,
         direccion: document.getElementById('edit-medico-direccion').value,
         biografia: document.getElementById('edit-medico-biografia').value,
-        foto_perfil: document.getElementById('edit-medico-foto-preview').getAttribute('src')
+        foto_perfil: fotoUrl
     };
-    
-    // Si la imagen es la por defecto, no guardar la url absoluta de default
-    if(payload.foto_perfil.includes('default-avatar')) {
-        payload.foto_perfil = null;
-    }
     
     fetch('backend/api/admin_update_medico.php', {
         method: 'POST',
@@ -1007,6 +1042,7 @@ document.getElementById('form-edit-medico').addEventListener('submit', function(
     .then(res => res.json())
     .then(data => {
         alert(data.message);
+        preview.removeAttribute('data-url-relativa');
         bootstrap.Modal.getInstance(document.getElementById('modalEditMedico')).hide();
         cargarMedicosAdmin();
     })
@@ -1090,4 +1126,201 @@ document.getElementById('form-coberturas-medico').addEventListener('submit', fun
     .finally(() => btn.disabled = false);
 });
 
+// ==========================================
+// SEDES / UNIDADES DE ATENCIÓN
+// ==========================================
+let sedesDisponibles = [];
 
+function cargarSedes() {
+    fetch('backend/api/crud_unidades.php')
+        .then(res => res.json())
+        .then(data => {
+            sedesDisponibles = data;
+            renderSedes(data);
+        })
+        .catch(() => {
+            document.getElementById('tabla-sedes').innerHTML =
+                '<tr><td colspan="4" class="text-center text-danger">Error al cargar sedes.</td></tr>';
+        });
+}
+
+function renderSedes(sedes) {
+    const tbody = document.getElementById('tabla-sedes');
+    if(!tbody) return;
+    tbody.innerHTML = '';
+
+    if(sedes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No hay sedes registradas.</td></tr>';
+        return;
+    }
+
+    sedes.forEach(s => {
+        const dir = [s.calle, s.numero].filter(Boolean).join(' ') || '—';
+        tbody.innerHTML += `
+            <tr>
+                <td class="fw-semibold">${s.nombre}</td>
+                <td>${dir}</td>
+                <td>${s.localidad || '—'}</td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick="abrirModalSede(${s.id})">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="borrarSede(${s.id})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+}
+
+function abrirModalSede(id) {
+    const sede = id ? sedesDisponibles.find(s => s.id == id) : null;
+    document.getElementById('modalSedeTitle').textContent = sede ? 'Editar Sede' : 'Nueva Sede';
+    document.getElementById('sede-id').value = sede ? sede.id : '';
+    document.getElementById('sede-nombre').value = sede ? sede.nombre : '';
+    document.getElementById('sede-calle').value = sede ? (sede.calle || '') : '';
+    document.getElementById('sede-numero').value = sede ? (sede.numero || '') : '';
+    document.getElementById('sede-localidad').value = sede ? (sede.localidad || '') : '';
+    new bootstrap.Modal(document.getElementById('modalSede')).show();
+}
+
+document.getElementById('form-sede').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const btn = this.querySelector('button[type="submit"]');
+    btn.disabled = true;
+
+    const payload = {
+        id: document.getElementById('sede-id').value || null,
+        nombre: document.getElementById('sede-nombre').value,
+        calle: document.getElementById('sede-calle').value,
+        numero: document.getElementById('sede-numero').value,
+        localidad: document.getElementById('sede-localidad').value
+    };
+
+    fetch('backend/api/crud_unidades.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+        bootstrap.Modal.getInstance(document.getElementById('modalSede')).hide();
+        cargarSedes();
+    })
+    .catch(() => alert('Error al guardar sede'))
+    .finally(() => btn.disabled = false);
+});
+
+function borrarSede(id) {
+    if(!confirm('¿Seguro que deseas eliminar esta sede?')) return;
+    fetch('backend/api/crud_unidades.php', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        cargarSedes();
+    })
+    .catch(() => alert('Error al eliminar'));
+}
+
+// ==========================================
+// HORARIOS DEL MÉDICO
+// ==========================================
+const DIAS_SEMANA = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
+
+function abrirHorariosMedico(id) {
+    const med = medicosDisponibles.find(m => m.id == id);
+    if(!med) return;
+
+    document.getElementById('horario-medico-id').value = med.id;
+    document.getElementById('horario-medico-nombre-label').textContent = `Dr/a. ${med.nombre} ${med.apellido}`;
+
+    const container = document.getElementById('horarios-editor-container');
+    container.innerHTML = '';
+
+    // Renderizar horarios existentes
+    if(med.horarios && med.horarios.length > 0) {
+        med.horarios.forEach(h => renderBloqueHorario(container, h));
+    }
+
+    new bootstrap.Modal(document.getElementById('modalHorariosMedico')).show();
+}
+
+function renderBloqueHorario(container, h) {
+    const sedesOpts = sedesDisponibles.map(s =>
+        `<option value="${s.id}" ${h && h.unidad_id == s.id ? 'selected' : ''}>${s.nombre}</option>`
+    ).join('');
+
+    const div = document.createElement('div');
+    div.className = 'card border-0 bg-light rounded-3 p-3 mb-3 horario-bloque';
+    div.innerHTML = `
+        <div class="row g-2 align-items-center">
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold">Día</label>
+                <select class="form-select form-select-sm hb-dia">
+                    ${DIAS_SEMANA.map(d => `<option value="${d}" ${h && h.dia_semana === d ? 'selected' : ''}>${d}</option>`).join('')}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold">Desde</label>
+                <input type="time" class="form-control form-control-sm hb-inicio" value="${h ? h.hora_inicio.slice(0,5) : '08:00'}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold">Hasta</label>
+                <input type="time" class="form-control form-control-sm hb-fin" value="${h ? h.hora_fin.slice(0,5) : '13:00'}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold">Duración (min)</label>
+                <input type="number" class="form-control form-control-sm hb-duracion" min="10" max="120" step="5" value="${h ? h.duracion_turno_minutos : 30}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Sede</label>
+                <select class="form-select form-select-sm hb-sede">
+                    <option value="">Sin sede</option>
+                    ${sedesOpts}
+                </select>
+            </div>
+            <div class="col-md-1 d-flex align-items-end">
+                <button class="btn btn-sm btn-outline-danger rounded-circle" onclick="this.closest('.horario-bloque').remove()">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    container.appendChild(div);
+}
+
+function agregarBloqueHorario() {
+    const container = document.getElementById('horarios-editor-container');
+    renderBloqueHorario(container, null);
+}
+
+function guardarHorariosMedico() {
+    const medicoId = document.getElementById('horario-medico-id').value;
+    const bloques = document.querySelectorAll('.horario-bloque');
+
+    const horarios = Array.from(bloques).map(b => ({
+        dia_semana: b.querySelector('.hb-dia').value,
+        hora_inicio: b.querySelector('.hb-inicio').value,
+        hora_fin: b.querySelector('.hb-fin').value,
+        duracion_turno_minutos: parseInt(b.querySelector('.hb-duracion').value) || 30,
+        unidad_id: b.querySelector('.hb-sede').value || null
+    }));
+
+    fetch('backend/api/crud_horarios_medico.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ medico_id: medicoId, horarios })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        bootstrap.Modal.getInstance(document.getElementById('modalHorariosMedico')).hide();
+        cargarMedicosAdmin();
+    })
+    .catch(() => alert('Error al guardar horarios'));
+}

@@ -270,16 +270,46 @@
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-3 mb-4 border-bottom">
                     <h1 class="h2 fw-bold">Configuración del Sistema</h1>
                 </div>
-                <div class="card border-0 shadow-sm rounded-4">
+
+                <!-- Agenda -->
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
                     <div class="card-body p-4">
+                        <h5 class="fw-bold mb-3"><i class="bi bi-calendar3 me-2 text-primary"></i>Agenda</h5>
                         <form id="form-configuracion">
                             <div class="mb-3">
                                 <label for="config-meses" class="form-label fw-bold">Meses visibles en agenda</label>
-                                <input type="number" class="form-control form-control-lg" id="config-meses" min="1" max="12" required>
+                                <input type="number" class="form-control" id="config-meses" min="1" max="12" required style="max-width: 150px;">
                                 <div class="form-text">Define la cantidad de meses hacia adelante que los pacientes pueden visualizar para sacar turnos.</div>
                             </div>
-                            <button type="submit" class="btn btn-primary px-4 py-2 rounded-pill">Guardar Configuración</button>
+                            <button type="submit" class="btn btn-primary px-4 rounded-pill">Guardar Configuración</button>
                         </form>
+                    </div>
+                </div>
+
+                <!-- Sedes / Unidades de Atención -->
+                <div class="card border-0 shadow-sm rounded-4">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold mb-0"><i class="bi bi-building me-2 text-primary"></i>Sedes / Unidades de Atención</h5>
+                            <button class="btn btn-primary rounded-pill btn-sm" onclick="abrirModalSede()">
+                                <i class="bi bi-plus-lg me-1"></i> Agregar Sede
+                            </button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0" id="sedes-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Nombre</th>
+                                        <th>Dirección</th>
+                                        <th>Localidad</th>
+                                        <th class="text-end">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-sedes">
+                                    <tr><td colspan="4" class="text-center text-muted py-4">Cargando sedes...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -501,7 +531,10 @@
         <form id="form-edit-medico">
             <input type="hidden" id="edit-medico-id">
             <div class="mb-3 text-center">
-                <img src="assets/images/default-avatar.png" id="edit-medico-foto-preview" class="rounded-circle mb-2 object-fit-cover" width="100" height="100" style="border: 3px solid #e9ecef;">
+                <div id="edit-medico-foto-wrapper" class="rounded-circle mb-2 overflow-hidden d-inline-flex align-items-center justify-content-center bg-light" style="width:100px;height:100px;border:3px solid #e9ecef;">
+                    <img src="" id="edit-medico-foto-preview" class="rounded-circle object-fit-cover d-none" width="100" height="100">
+                    <i class="bi bi-person-fill text-secondary d-block" id="edit-medico-foto-placeholder" style="font-size:3.5rem;"></i>
+                </div>
                 <div>
                     <label for="edit-medico-foto" class="btn btn-sm btn-outline-primary rounded-pill">Subir Foto</label>
                     <input type="file" id="edit-medico-foto" class="d-none" accept="image/png, image/jpeg, image/webp">
@@ -542,6 +575,73 @@
             </div>
             <button type="submit" class="btn btn-primary w-100 rounded-pill py-2 fw-bold">Guardar Coberturas</button>
         </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Sede (Crear/Editar) -->
+<div class="modal fade" id="modalSede" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <div class="modal-header border-bottom-0 pb-0">
+        <h5 class="modal-title fw-bold" id="modalSedeTitle">Nueva Sede</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="form-sede">
+            <input type="hidden" id="sede-id">
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Nombre <span class="text-danger">*</span></label>
+                <input type="text" class="form-control bg-light border-0 rounded-3" id="sede-nombre" placeholder="Ej: Consultorio Central" required>
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-8">
+                    <label class="form-label fw-semibold">Calle</label>
+                    <input type="text" class="form-control bg-light border-0 rounded-3" id="sede-calle" placeholder="Ej: Av. Corrientes">
+                </div>
+                <div class="col-4">
+                    <label class="form-label fw-semibold">Número</label>
+                    <input type="text" class="form-control bg-light border-0 rounded-3" id="sede-numero" placeholder="1234">
+                </div>
+            </div>
+            <div class="mb-4">
+                <label class="form-label fw-semibold">Localidad</label>
+                <input type="text" class="form-control bg-light border-0 rounded-3" id="sede-localidad" placeholder="Ej: San Carlos de Bolívar">
+            </div>
+            <button type="submit" class="btn btn-primary w-100 rounded-pill py-2 fw-bold">Guardar Sede</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Horarios del Médico -->
+<div class="modal fade" id="modalHorariosMedico" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <div class="modal-header border-bottom-0 pb-0">
+        <div>
+            <h5 class="modal-title fw-bold">Horarios de Atención</h5>
+            <small class="text-muted" id="horario-medico-nombre-label">Dr/a. ...</small>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <input type="hidden" id="horario-medico-id">
+        <p class="text-muted small mb-3">Marcá los días de atención y configurá el horario y la sede para cada bloque.</p>
+        <div id="horarios-editor-container">
+            <!-- Se generan dinámicamente los días -->
+        </div>
+        <button class="btn btn-outline-primary rounded-pill mt-3" onclick="agregarBloqueHorario()">
+            <i class="bi bi-plus-lg me-1"></i> Agregar bloque de horario
+        </button>
+      </div>
+      <div class="modal-footer border-top-0 pt-0">
+        <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary rounded-pill px-4" onclick="guardarHorariosMedico()">
+            <i class="bi bi-check-lg me-1"></i> Guardar Horarios
+        </button>
       </div>
     </div>
   </div>
