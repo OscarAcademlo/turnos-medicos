@@ -36,6 +36,38 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         window.location.href = 'index.php'; // Volver si no hay médico
     }
+
+    // Buscador de Coberturas
+    const searchOs = document.getElementById('wizard-search-os');
+    if (searchOs) {
+        searchOs.addEventListener('input', function(e) {
+            const term = e.target.value.toLowerCase();
+            const btns = document.querySelectorAll('#wizard-os-container .pill-btn');
+            btns.forEach(btn => {
+                if (btn.textContent.toLowerCase().includes(term)) {
+                    btn.classList.remove('d-none');
+                } else {
+                    btn.classList.add('d-none');
+                }
+            });
+        });
+    }
+
+    // Buscador de Planes
+    const searchPlan = document.getElementById('wizard-search-plan');
+    if (searchPlan) {
+        searchPlan.addEventListener('input', function(e) {
+            const term = e.target.value.toLowerCase();
+            const btns = document.querySelectorAll('#wizard-planes-container .pill-btn');
+            btns.forEach(btn => {
+                if (btn.textContent.toLowerCase().includes(term)) {
+                    btn.classList.remove('d-none');
+                } else {
+                    btn.classList.add('d-none');
+                }
+            });
+        });
+    }
 });
 
 function iniciarWizardReserva(medicoId) {
@@ -143,16 +175,20 @@ window.wizardCargarPlanes = function(osId) {
     const container = document.getElementById('wizard-planes-container');
     container.innerHTML = '<span class="text-muted">Cargando planes...</span>';
     
-    fetch(`backend/api/get_planes_by_os.php?os_id=${osId}`)
+    // Limpiar buscador si existe
+    const searchPlan = document.getElementById('wizard-search-plan');
+    if(searchPlan) searchPlan.value = '';
+    
+    fetch(`backend/api/get_planes.php?obra_social_id=${osId}`)
         .then(res => res.json())
         .then(data => {
             container.innerHTML = '';
-            if(!data.planes || data.planes.length === 0) {
+            if(!data || data.length === 0) {
                 document.getElementById('wizard-step-3').classList.add('d-none');
                 wizardGoToStep4();
                 return;
             }
-            data.planes.forEach(plan => {
+            data.forEach(plan => {
                 const btn = document.createElement('button');
                 btn.className = 'pill-btn px-4 py-2';
                 btn.textContent = plan.nombre;
@@ -165,6 +201,11 @@ window.wizardCargarPlanes = function(osId) {
                 };
                 container.appendChild(btn);
             });
+        })
+        .catch(err => {
+            console.error("Error cargando planes", err);
+            document.getElementById('wizard-step-3').classList.add('d-none');
+            wizardGoToStep4();
         });
 };
 

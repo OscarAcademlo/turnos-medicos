@@ -72,12 +72,8 @@
         </div>
 
         <!-- Contenedor de Resultados -->
-        <div class="row justify-content-center">
-            <div class="col-lg-10">
-                <div id="results-container" class="d-flex flex-column gap-4">
-                    <!-- Los resultados se cargan vía JS -->
-                </div>
-            </div>
+        <div id="results-container" class="row g-4 pb-5">
+            <!-- Los resultados se cargan vía JS -->
         </div>
     </div>
 

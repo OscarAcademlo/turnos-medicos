@@ -52,54 +52,59 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 medicos.forEach(medico => {
-                    const card = document.createElement('div');
-                    card.className = 'doctor-card';
+                    const col = document.createElement('div');
+                    col.className = 'col-12 col-md-6 col-lg-4 col-xl-3 d-flex';
                     
                     // Especialidades
                     const especialidadesText = medico.especialidades.map(e => e.nombre).join(', ') || 'Medicina General';
                     
                     // Coberturas
-                    const coberturasText = medico.obras_sociales.length > 0 
+                    let coberturasText = medico.obras_sociales.length > 0 
                         ? 'Atiende: ' + medico.obras_sociales.map(o => o.nombre).join(', ') 
-                        : 'Particular / Sin coberturas asignadas';
+                        : 'Particular / Consultar coberturas';
+                        
+                    // Limitar el texto de coberturas si es muy largo
+                    if (coberturasText.length > 60) {
+                        coberturasText = coberturasText.substring(0, 60) + '...';
+                    }
                     
                     // Horarios
                     let horariosHtml = '';
                     if (medico.horarios && medico.horarios.length > 0) {
-                        medico.horarios.forEach(h => {
-                            // Formatear H:i:s a H:i
+                        medico.horarios.slice(0, 3).forEach(h => {
                             const inicio = h.hora_inicio.substring(0, 5);
                             const fin = h.hora_fin.substring(0, 5);
-                            horariosHtml += `
-                                <div class="schedule-row">
-                                    <span>${h.dia_semana}</span>
-                                    <span>${inicio} hs a ${fin} hs</span>
-                                </div>`;
+                            horariosHtml += `<div class="small"><i class="bi bi-clock me-1"></i> ${h.dia_semana}: ${inicio} - ${fin}</div>`;
                         });
+                        if(medico.horarios.length > 3) {
+                            horariosHtml += `<div class="small text-primary mt-1">+${medico.horarios.length - 3} horarios más</div>`;
+                        }
                     } else {
                         horariosHtml = `<div class="text-muted small">Sin horarios cargados</div>`;
                     }
 
                     // Foto por defecto
-                    const fotoUrl = medico.foto_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(medico.nombre + ' ' + medico.apellido) + '&background=e9ecef&color=6c757d';
+                    const fotoUrl = medico.foto_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(medico.nombre + ' ' + medico.apellido) + '&background=e9ecef&color=6c757d&size=200';
 
-                    card.innerHTML = `
-                        <div class="doctor-avatar-col">
-                            <img src="${fotoUrl}" alt="Dr. ${medico.apellido}">
-                        </div>
-                        <div class="doctor-info-col">
-                            <div class="doctor-name">${medico.nombre} ${medico.apellido}</div>
-                            <div class="doctor-specialty">${especialidadesText}</div>
-                            <div class="doctor-coberturas">${coberturasText}</div>
-                        </div>
-                        <div class="doctor-schedule-col">
-                            <div>
-                                ${horariosHtml}
+                    col.innerHTML = `
+                        <div class="card w-100 border-0 shadow-sm glass-card hover-lift" style="border-radius: 1rem; overflow: hidden; transition: transform 0.3s ease, box-shadow 0.3s ease;">
+                            <div class="text-center pt-4 pb-2" style="background: rgba(248,249,250,0.5);">
+                                <img src="${fotoUrl}" alt="Dr. ${medico.apellido}" class="rounded-circle shadow-sm border border-3 border-white" style="width: 120px; height: 120px; object-fit: cover;">
                             </div>
-                            <button class="btn-agendar" onclick="agendarTurno(${medico.id})">AGENDAR TURNO</button>
+                            <div class="card-body d-flex flex-column text-center">
+                                <h5 class="card-title fw-bold mb-1">${medico.nombre} ${medico.apellido}</h5>
+                                <h6 class="card-subtitle mb-3 text-primary fw-semibold">${especialidadesText}</h6>
+                                <p class="card-text text-muted small mb-3 flex-grow-1" style="min-height: 40px;">${coberturasText}</p>
+                                <div class="bg-light rounded p-2 mb-3 text-start">
+                                    ${horariosHtml}
+                                </div>
+                                <button class="btn btn-primary rounded-pill w-100 mt-auto fw-semibold py-2" onclick="agendarTurno(${medico.id})">
+                                    Agendar Turno
+                                </button>
+                            </div>
                         </div>
                     `;
-                    resultsContainer.appendChild(card);
+                    resultsContainer.appendChild(col);
                 });
             })
             .catch(error => {
