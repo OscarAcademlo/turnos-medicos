@@ -1,4 +1,4 @@
--- v2: Unidades de Atención + Horarios con Unidad
+-- v2: Unidades de Atención + Horarios con Unidad + fix especialidad_id nullable en turnos
 -- Ejecutar en la base de datos oscarsoft_turnos
 
 -- 1. Tabla de Unidades de Atención (Consultorios/Sedes)
@@ -14,9 +14,12 @@ CREATE TABLE IF NOT EXISTS unidades_atencion (
 
 -- 2. Agregar unidad_id a la tabla horarios_medicos (si no existe)
 ALTER TABLE horarios_medicos 
-    ADD COLUMN IF NOT EXISTS unidad_id INT NULL,
-    ADD COLUMN IF NOT EXISTS duracion_turno_minutos INT DEFAULT 30,
-    ADD FOREIGN KEY (unidad_id) REFERENCES unidades_atencion(id) ON DELETE SET NULL;
+    ADD COLUMN IF NOT EXISTS unidad_id INT NULL;
 
--- Nota: la columna duracion_turno_minutos ya existe en el schema original,
--- pero puede que no esté en algunas instancias. El IF NOT EXISTS la protege.
+ALTER TABLE horarios_medicos
+    ADD CONSTRAINT fk_horarios_unidad
+    FOREIGN KEY (unidad_id) REFERENCES unidades_atencion(id) ON DELETE SET NULL;
+
+-- 3. Hacer especialidad_id nullable en turnos (algunos médicos pueden no tener especialidad)
+ALTER TABLE turnos 
+    MODIFY COLUMN especialidad_id INT NULL;

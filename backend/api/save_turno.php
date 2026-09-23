@@ -19,12 +19,14 @@ $data = json_decode(file_get_contents("php://input"));
 
 if(
     !empty($data->medico_id) &&
-    !empty($data->especialidad_id) &&
     !empty($data->fecha) &&
     !empty($data->hora)
 ) {
     try {
         $paciente_id = $_SESSION['user_id'];
+        
+        // Determinar especialidad_id (puede ser null si el médico no tiene especialidad)
+        $especialidad_id = (isset($data->especialidad_id) && is_numeric($data->especialidad_id)) ? $data->especialidad_id : null;
         
         // Determinar cobertura_id y plan_id
         $cobertura_id = (isset($data->cobertura_id) && is_numeric($data->cobertura_id)) ? $data->cobertura_id : null;
@@ -46,7 +48,7 @@ if(
         $stmt = $db->prepare($query);
         $stmt->bindParam(":medico_id", $data->medico_id);
         $stmt->bindParam(":paciente_id", $paciente_id);
-        $stmt->bindParam(":especialidad_id", $data->especialidad_id);
+        $stmt->bindParam(":especialidad_id", $especialidad_id, PDO::PARAM_INT);
         
         $stmt->bindParam(":obra_social_id", $cobertura_id, PDO::PARAM_INT);
         $stmt->bindParam(":plan_id", $plan_id, PDO::PARAM_INT);

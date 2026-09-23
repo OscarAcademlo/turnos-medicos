@@ -90,6 +90,10 @@ function iniciarWizardReserva(medicoId) {
                     
                 wizardData.medicoNombre = nombreCompleto;
                 wizardData.especialidadNombre = especialidadNombre;
+                // Guardar el ID de la primera especialidad para el guardado del turno
+                wizardData.especialidadId = med.especialidades && med.especialidades.length > 0
+                    ? med.especialidades[0].especialidad_id
+                    : null;
                 
                 document.getElementById('wizard-medico-nombre').textContent = nombreCompleto;
                 document.getElementById('wizard-medico-nombre-q').textContent = nombreCompleto;
@@ -484,6 +488,12 @@ document.getElementById('wizard-btn-confirmar').addEventListener('click', () => 
         })
         .then(res => res.json())
         .then(data => {
+            if(data.message && (data.message.toLowerCase().includes('error') || data.message.toLowerCase().includes('no se pudo'))) {
+                alert('Error al guardar el turno: ' + data.message);
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+                return;
+            }
             alert(`¡Turno reservado exitosamente!\n\nMédico: ${wizardData.medicoNombre}\nEspecialidad: ${wizardData.especialidadNombre}\nFecha: ${wizardData.fecha}\nHora: ${wizardData.hora}\nCobertura: ${wizardData.coberturaNombre} ${wizardData.planNombre ? '- '+wizardData.planNombre : ''}`);
             localStorage.removeItem('turno_pendiente');
             window.location.href = 'dashboard.php';
