@@ -162,13 +162,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // Lógica Cerrar Sesión
     document.getElementById('logout-btn').addEventListener('click', (e) => {
         e.preventDefault();
-        fetch('backend/api/logout.php')
-            .finally(() => {
-                auth.signOut().finally(() => {
-                    localStorage.removeItem('user');
-                    window.location.href = 'index.php';
-                });
+        try {
+            fetch('backend/api/logout.php').catch(() => {});
+        } catch(err) {}
+
+        localStorage.removeItem('user');
+        localStorage.removeItem('turno_pendiente');
+
+        if (typeof auth !== 'undefined' && auth && auth.signOut) {
+            auth.signOut().then(() => {
+                window.location.href = 'index.php';
+            }).catch(() => {
+                window.location.href = 'index.php';
             });
+        } else {
+            window.location.href = 'index.php';
+        }
     });
 });
 
@@ -876,7 +885,6 @@ document.getElementById('form-configuracion').addEventListener('submit', functio
 // ==========================================
 let medicosDisponibles = [];
 let obrasSocialesDisponibles = [];
-let especialidadesDisponibles = [];
 
 function cargarMedicosAdmin() {
     const container = document.getElementById('medicos-container');
