@@ -47,12 +47,17 @@ function iniciarWizardReserva(medicoId) {
         .then(data => {
             if(data.length > 0) {
                 const med = data[0];
-                wizardData.medicoNombre = med.nombre_completo;
-                wizardData.especialidadNombre = med.especialidad_nombre;
+                const nombreCompleto = med.nombre + ' ' + med.apellido;
+                const especialidadNombre = med.especialidades && med.especialidades.length > 0 
+                    ? med.especialidades.map(e => e.nombre).join(', ') 
+                    : 'Medicina General';
+                    
+                wizardData.medicoNombre = nombreCompleto;
+                wizardData.especialidadNombre = especialidadNombre;
                 
-                document.getElementById('wizard-medico-nombre').textContent = med.nombre_completo;
-                document.getElementById('wizard-medico-nombre-q').textContent = med.nombre_completo;
-                document.getElementById('wizard-especialidad-nombre').textContent = med.especialidad_nombre;
+                document.getElementById('wizard-medico-nombre').textContent = nombreCompleto;
+                document.getElementById('wizard-medico-nombre-q').textContent = nombreCompleto;
+                document.getElementById('wizard-especialidad-nombre').textContent = especialidadNombre;
             } else {
                 alert("Profesional no encontrado.");
                 window.location.href = 'index.php';
@@ -83,24 +88,18 @@ window.wizardCargarObrasSociales = function() {
                 container.innerHTML = '<span class="text-muted">No atiende por obra social.</span>';
                 return;
             }
-            // Agrupar por obra social (ya que vienen combinadas en un array, o usar endpoint get_obras_by_medico si es mejor)
-            // Wait, el viejo usaba `backend/api/get_obras_by_medico.php`
-            // Lo volveré a usar.
-            fetch(`backend/api/get_obras_by_medico.php?medico_id=${wizardData.medicoId}`)
-                .then(res => res.json())
-                .then(dataOS => {
-                    if(!dataOS.obras || dataOS.obras.length === 0) {
-                        container.innerHTML = '<span class="text-muted">No atiende por obra social.</span>';
-                        return;
-                    }
-                    dataOS.obras.forEach(os => {
-                        const btn = document.createElement('button');
-                        btn.className = 'pill-btn px-4 py-2';
-                        btn.textContent = os.nombre;
-                        btn.onclick = () => wizardSelectCobertura(os.id, os.nombre);
-                        container.appendChild(btn);
-                    });
-                });
+            // Agrupar por obra social y mostrar
+            data[0].obras_sociales.forEach(os => {
+                const btn = document.createElement('button');
+                btn.className = 'pill-btn px-4 py-2';
+                btn.textContent = os.nombre;
+                btn.onclick = () => wizardSelectCobertura(os.obra_social_id, os.nombre);
+                container.appendChild(btn);
+            });
+        })
+        .catch(err => {
+            console.error("Error cargando coberturas", err);
+            container.innerHTML = '<span class="text-danger">Error al cargar coberturas.</span>';
         });
 };
 
