@@ -64,28 +64,40 @@ document.addEventListener('DOMContentLoaded', () => {
             if (turnoPendiente) {
                 const wizardData = JSON.parse(turnoPendiente);
                 
-                // Realizar POST a save_turno.php
                 fetch('backend/api/save_turno.php', {
                     method: 'POST',
+                    credentials: 'same-origin',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         medico_id: wizardData.medicoId,
                         especialidad_id: wizardData.especialidadId,
                         cobertura_id: wizardData.coberturaId === 'particular' ? null : wizardData.coberturaId,
                         plan_id: wizardData.planId || null,
+                        unidad_id: wizardData.unidadId || null,
                         fecha: wizardData.fecha,
-                        hora: wizardData.hora
+                        hora: wizardData.hora,
+                        firebase_uid: user ? user.firebase_uid : null,
+                        email: user ? user.email : null
                     })
                 })
-                .then(res => res.json())
+                .then(async res => {
+                    const saveRes = await res.json().catch(() => ({}));
+                    if (!res.ok || saveRes.status === 'error') {
+                        throw new Error(saveRes.message || 'Error al guardar el turno');
+                    }
+                    return saveRes;
+                })
                 .then(saveRes => {
-                    alert(`¡Turno reservado exitosamente!\n\nMédico: ${wizardData.medicoNombre}\nEspecialidad: ${wizardData.especialidadNombre}\nFecha: ${wizardData.fecha}\nHora: ${wizardData.hora}\nCobertura: ${wizardData.coberturaNombre} ${wizardData.planNombre ? '- '+wizardData.planNombre : ''}`);
+                    const sedeStr = wizardData.sedeNombre ? `\nSede: ${wizardData.sedeNombre}` : '';
+                    alert(`¡Turno reservado exitosamente!\n\nMédico: ${wizardData.medicoNombre}\nEspecialidad: ${wizardData.especialidadNombre}\nFecha: ${wizardData.fecha}\nHora: ${wizardData.hora}${sedeStr}\nCobertura: ${wizardData.coberturaNombre} ${wizardData.planNombre ? '- '+wizardData.planNombre : ''}`);
                     localStorage.removeItem('turno_pendiente');
-                    setTimeout(() => document.getElementById('menu-turnos').click(), 500);
+                    cargarMisTurnos();
                 })
                 .catch(err => {
-                    console.error("Error guardando turno", err);
-                    alert("Ocurrió un error guardando el turno. Intenta de nuevo.");
+                    console.error("Error guardando turno pendiente", err);
+                    alert("No se pudo reservar el turno pendiente: " + err.message);
+                    localStorage.removeItem('turno_pendiente');
+                    cargarMisTurnos();
                 });
             }
 
@@ -231,10 +243,14 @@ function cargarMisTurnos() {
         </div>
     `;
 
-    fetch('backend/api/get_mis_turnos.php')
-        .then(res => {
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            return res.json();
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const fuid = user.firebase_uid || '';
+    const fuidParam = fuid ? `?firebase_uid=${encodeURIComponent(fuid)}` : '';
+
+    fetch(`backend/api/get_mis_turnos.php${fuidParam}`, { credentials: 'same-origin' })
+        .then(async res => {
+            const data = await res.json().catch(() => []);
+            return data;
         })
         .then(data => {
             const contadorEl = document.getElementById('contador-proximos-turnos');

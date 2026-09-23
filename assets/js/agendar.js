@@ -694,7 +694,6 @@ document.getElementById('wizard-btn-confirmar').addEventListener('click', () => 
     const currentUser = auth.currentUser;
     
     if (currentUser) {
-        // Change button state to loading
         const btn = document.getElementById('wizard-btn-confirmar');
         const originalHtml = btn.innerHTML;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Guardando...';
@@ -702,6 +701,7 @@ document.getElementById('wizard-btn-confirmar').addEventListener('click', () => 
 
         fetch('backend/api/save_turno.php', {
             method: 'POST',
+            credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 medico_id: wizardData.medicoId,
@@ -710,17 +710,19 @@ document.getElementById('wizard-btn-confirmar').addEventListener('click', () => 
                 plan_id: wizardData.planId || null,
                 unidad_id: wizardData.unidadId || null,
                 fecha: wizardData.fecha,
-                hora: wizardData.hora
+                hora: wizardData.hora,
+                firebase_uid: currentUser ? currentUser.uid : null,
+                email: currentUser ? currentUser.email : null
             })
         })
-        .then(res => res.json())
-        .then(data => {
-            if(data.message && (data.message.toLowerCase().includes('error') || data.message.toLowerCase().includes('no se pudo'))) {
-                alert('Error al guardar el turno: ' + data.message);
-                btn.innerHTML = originalHtml;
-                btn.disabled = false;
-                return;
+        .then(async res => {
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || data.status === 'error') {
+                throw new Error(data.message || 'Error al guardar el turno (HTTP ' + res.status + ')');
             }
+            return data;
+        })
+        .then(data => {
             const sedeStr = wizardData.sedeNombre ? `\nSede: ${wizardData.sedeNombre}` : '';
             alert(`¡Turno reservado exitosamente!\n\nMédico: ${wizardData.medicoNombre}\nEspecialidad: ${wizardData.especialidadNombre}\nFecha: ${wizardData.fecha}\nHora: ${wizardData.hora}${sedeStr}\nCobertura: ${wizardData.coberturaNombre} ${wizardData.planNombre ? '- '+wizardData.planNombre : ''}`);
             localStorage.removeItem('turno_pendiente');
@@ -728,7 +730,7 @@ document.getElementById('wizard-btn-confirmar').addEventListener('click', () => 
         })
         .catch(err => {
             console.error("Error al guardar el turno", err);
-            alert("Ocurrió un error al guardar tu turno. Por favor intenta de nuevo.");
+            alert("No se pudo reservar el turno: " + err.message);
             btn.innerHTML = originalHtml;
             btn.disabled = false;
         });

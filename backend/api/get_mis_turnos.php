@@ -7,19 +7,41 @@ header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers
 
 include_once '../config/database.php';
 
-if (!isset($_SESSION['user_id'])) {
-    http_response_code(401);
-    echo json_encode(array("message" => "Debe iniciar sesión para ver sus turnos."));
-    exit();
-}
-
 $database = new Database();
 $db = $database->getConnection();
+
+// 1. Auto-autenticar por firebase_uid o email si la sesión PHP expiró
+if (!isset($_SESSION['user_id'])) {
+    $fuid = isset($_GET['firebase_uid']) ? trim($_GET['firebase_uid']) : '';
+    $email = isset($_GET['email']) ? trim($_GET['email']) : '';
+    
+    if (!empty($fuid) || !empty($email)) {
+        try {
+            $stmt_u = $db->prepare("SELECT id, rol, nombre FROM usuarios WHERE (firebase_uid = :fuid AND :fuid != '') OR (email = :email AND :email != '') LIMIT 1");
+            $stmt_u->execute([
+                ':fuid' => $fuid,
+                ':email' => $email
+            ]);
+            $u_row = $stmt_u->fetch(PDO::FETCH_ASSOC);
+            if ($u_row) {
+                $_SESSION['user_id'] = $u_row['id'];
+                $_SESSION['rol'] = $u_row['rol'];
+                $_SESSION['nombre'] = $u_row['nombre'];
+            }
+        } catch(Throwable $e) {}
+    }
+}
+
+if (!isset($_SESSION['user_id'])) {
+    http_response_code(401);
+    echo json_encode(array("error" => "unauthorized", "message" => "Debe iniciar sesión para ver sus turnos."));
+    exit();
+}
 
 $paciente_id = $_SESSION['user_id'];
 $is_admin = in_array($_SESSION['rol'] ?? '', ['superadmin', 'admin', 'recepcionista']);
 
-// Auto-healing: asegurar que unidades_atencion exista y que turnos tenga unidad_id
+// 2. Auto-healing silencioso
 try {
     $db->exec("CREATE TABLE IF NOT EXISTS unidades_atencion (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -35,7 +57,7 @@ try {
     if(empty($cols)) {
         $db->exec("ALTER TABLE turnos ADD COLUMN unidad_id INT NULL");
     }
-} catch(Exception $e) { /* silencioso */ }
+} catch(Throwable $e) { /* silencioso */ }
 
 try {
     $query_base = "
@@ -66,14 +88,14 @@ try {
     } else {
         $query = $query_base . " WHERE t.paciente_id = :paciente_id ORDER BY t.fecha DESC, t.hora_inicio DESC";
         $stmt = $db->prepare($query);
-        $stmt->bindParam(":paciente_id", $paciente_id);
+        $stmt->bindParam(":paciente_id", $paciente_id, PDO::PARAM_INT);
     }
 
     $stmt->execute();
     $turnos = $stmt->fetchAll(PDO::FETCH_ASSOC);
     echo json_encode($turnos ?: []);
-} catch(Exception $e) {
-    // Fallback de contingencia si fallara el JOIN con unidades_atencion
+} catch(Throwable $e) {
+    // Fallback de contingencia si fallara cualquier JOIN
     try {
         $fallback_query = "
             SELECT 
@@ -96,13 +118,12 @@ try {
             $stmt = $db->prepare($fallback_query . " ORDER BY t.fecha DESC, t.hora_inicio DESC");
         } else {
             $stmt = $db->prepare($fallback_query . " WHERE t.paciente_id = :paciente_id ORDER BY t.fecha DESC, t.hora_inicio DESC");
-            $stmt->bindParam(":paciente_id", $paciente_id);
+            $stmt->bindParam(":paciente_id", $paciente_id, PDO::PARAM_INT);
         }
         $stmt->execute();
         $turnos = $stmt->fetchAll(PDO::FETCH_ASSOC);
         echo json_encode($turnos ?: []);
-    } catch(Exception $ex) {
+    } catch(Throwable $ex) {
         echo json_encode([]);
     }
 }
-?>
