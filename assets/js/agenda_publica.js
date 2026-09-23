@@ -1,3 +1,6 @@
+let medicosGlobal = [];
+window.medicosGlobal = medicosGlobal;
+
 document.addEventListener('DOMContentLoaded', () => {
     const filterNombre = document.getElementById('filter-nombre');
     const filterEspecialidad = document.getElementById('filter-especialidad');
@@ -41,13 +44,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (filterEspecialidad.value) params.append('especialidad_id', filterEspecialidad.value);
         if (filterCobertura.value) params.append('obra_social_id', filterCobertura.value);
 
-let medicosGlobal = [];
-
         fetch(`backend/api/get_public_agenda.php?${params.toString()}`)
             .then(response => response.json())
             .then(medicos => {
                 resultsContainer.innerHTML = '';
                 medicosGlobal = medicos || [];
+                window.medicosGlobal = medicosGlobal;
                 
                 if (!medicos || medicos.length === 0) {
                     resultsContainer.innerHTML = `<div class="alert alert-info text-center mt-4">No se encontraron profesionales con esos criterios.</div>`;
@@ -135,33 +137,15 @@ window.agendarTurno = function(medicoId) {
     window.location.href = 'agendar.php?medico_id=' + medicoId;
 };
 
-// Modal de Coberturas para el Paciente
-window.abrirModalCoberturasPaciente = function(medicoId) {
-    const med = medicosGlobal.find(m => m.id == medicoId);
-    if (!med) return;
-
-    const modalTitle = document.getElementById('modal-coberturas-paciente-title');
-    const infoContainer = document.getElementById('modal-coberturas-paciente-medico-info');
-    const listContainer = document.getElementById('modal-coberturas-paciente-list');
-    const btnAgendar = document.getElementById('modal-coberturas-paciente-btn-agendar');
-
-    const avatarDefault = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(med.nombre + ' ' + med.apellido) + '&background=e9ecef&color=6c757d&size=200';
-    const foto = (med.foto_perfil && med.foto_perfil.trim() !== '') ? med.foto_perfil : (med.foto_url || avatarDefault);
-
-    infoContainer.innerHTML = `
-        <img src="${foto}" class="rounded-circle shadow-sm mb-2" style="width: 80px; height: 80px; object-fit: cover;" onerror="this.onerror=null; this.src='${avatarDefault}';">
-        <h5 class="fw-bold mb-0">${med.nombre} ${med.apellido}</h5>
-        <small class="text-primary fw-semibold">${(med.especialidades || []).map(e => e.nombre).join(', ') || 'Medicina General'}</small>
-    `;
-
+function renderizarListaCoberturasModal(med, listContainer) {
     if (med.obras_sociales && med.obras_sociales.length > 0) {
         let itemsHtml = '<h6 class="fw-bold text-muted small text-uppercase mb-2">Coberturas y Obras Sociales Aceptadas:</h6>';
-        itemsHtml += '<div class="list-group list-group-flush border rounded-3 p-2 bg-light">';
+        itemsHtml += '<div class="list-group list-group-flush border rounded-3 p-2 bg-light" style="max-height: 280px; overflow-y: auto;">';
         med.obras_sociales.forEach(os => {
             itemsHtml += `
                 <div class="list-group-item bg-transparent d-flex align-items-center py-2 border-0">
                     <i class="bi bi-shield-check text-success fs-5 me-2"></i>
-                    <span class="fw-medium">${os.nombre}</span>
+                    <span class="fw-medium text-dark">${os.nombre}</span>
                 </div>
             `;
         });
@@ -172,22 +156,84 @@ window.abrirModalCoberturasPaciente = function(medicoId) {
         listContainer.innerHTML = `
             <div class="alert alert-info border-0 rounded-3 mb-0">
                 <div class="d-flex align-items-start">
-                    <i class="bi bi-info-circle-fill fs-4 me-2"></i>
+                    <i class="bi bi-info-circle-fill fs-4 me-2 text-primary"></i>
                     <div>
-                        <strong>Atención Particular</strong>
-                        <p class="small mb-0">Este profesional actualmente no tiene convenios de obras sociales directos cargados o atiende de forma particular. Puedes solicitar factura para reintegro.</p>
+                        <strong class="text-dark">Atención Particular</strong>
+                        <p class="small text-muted mb-0">Este profesional actualmente no tiene convenios de obras sociales directos cargados o atiende de forma particular. Puedes solicitar factura para reintegro.</p>
                     </div>
                 </div>
             </div>
         `;
     }
+}
 
-    btnAgendar.onclick = function() {
-        window.location.href = 'agendar.php?medico_id=' + med.id;
-    };
+// Modal de Coberturas para el Paciente
+window.abrirModalCoberturasPaciente = function(medicoId) {
+    const listContainer = document.getElementById('modal-coberturas-paciente-list');
+    const infoContainer = document.getElementById('modal-coberturas-paciente-medico-info');
+    const btnAgendar = document.getElementById('modal-coberturas-paciente-btn-agendar');
 
-    const modal = new bootstrap.Modal(document.getElementById('modalCoberturasPaciente'));
+    let med = (window.medicosGlobal || []).find(m => m.id == medicoId);
+
+    // Si ya tenemos los datos en memoria, mostramos inmediatamente
+    if (med) {
+        const avatarDefault = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(med.nombre + ' ' + med.apellido) + '&background=e9ecef&color=6c757d&size=200';
+        const foto = (med.foto_perfil && med.foto_perfil.trim() !== '') ? med.foto_perfil : (med.foto_url || avatarDefault);
+
+        infoContainer.innerHTML = `
+            <img src="${foto}" class="rounded-circle shadow-sm mb-2" style="width: 80px; height: 80px; object-fit: cover;" onerror="this.onerror=null; this.src='${avatarDefault}';">
+            <h5 class="fw-bold mb-0">${med.nombre} ${med.apellido}</h5>
+            <small class="text-primary fw-semibold">${(med.especialidades || []).map(e => e.nombre).join(', ') || 'Medicina General'}</small>
+        `;
+        renderizarListaCoberturasModal(med, listContainer);
+        btnAgendar.onclick = function() {
+            window.location.href = 'agendar.php?medico_id=' + med.id;
+        };
+    } else {
+        listContainer.innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary spinner-border-sm" role="status"></div>
+                <div class="small text-muted mt-2">Cargando coberturas...</div>
+            </div>
+        `;
+    }
+
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalCoberturasPaciente'));
     modal.show();
+
+    // Actualización dinámica en tiempo real desde el servidor
+    fetch(`backend/api/get_public_agenda.php?medico_id=${medicoId}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.length > 0) {
+                const medActualizado = data[0];
+                if (!window.medicosGlobal) window.medicosGlobal = [];
+                const idx = window.medicosGlobal.findIndex(m => m.id == medicoId);
+                if (idx !== -1) {
+                    window.medicosGlobal[idx] = medActualizado;
+                } else {
+                    window.medicosGlobal.push(medActualizado);
+                }
+
+                const avatarDefault = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(medActualizado.nombre + ' ' + medActualizado.apellido) + '&background=e9ecef&color=6c757d&size=200';
+                const foto = (medActualizado.foto_perfil && medActualizado.foto_perfil.trim() !== '') ? medActualizado.foto_perfil : (medActualizado.foto_url || avatarDefault);
+
+                infoContainer.innerHTML = `
+                    <img src="${foto}" class="rounded-circle shadow-sm mb-2" style="width: 80px; height: 80px; object-fit: cover;" onerror="this.onerror=null; this.src='${avatarDefault}';">
+                    <h5 class="fw-bold mb-0">${medActualizado.nombre} ${medActualizado.apellido}</h5>
+                    <small class="text-primary fw-semibold">${(medActualizado.especialidades || []).map(e => e.nombre).join(', ') || 'Medicina General'}</small>
+                `;
+
+                renderizarListaCoberturasModal(medActualizado, listContainer);
+
+                btnAgendar.onclick = function() {
+                    window.location.href = 'agendar.php?medico_id=' + medActualizado.id;
+                };
+            }
+        })
+        .catch(err => {
+            console.error('Error al actualizar coberturas dinámicamente:', err);
+        });
 };
 
 // Utils: Debounce

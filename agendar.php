@@ -124,20 +124,37 @@
                     <div id="wizard-dias-container" class="d-flex flex-wrap gap-3 justify-content-center mb-5" style="max-width: 900px; margin: 0 auto;">
                         <!-- Días Pills -->
                     </div>
-                    
-                    <!-- Horarios -->
-                    <div id="wizard-horarios-container" class="d-none text-center">
-                        <hr class="w-50 mx-auto my-5 text-muted opacity-25">
-                        <h4 class="fw-light text-muted mb-4">Horarios disponibles</h4>
-                        <div id="wizard-horarios-list" class="d-flex flex-wrap gap-2 justify-content-center mx-auto" style="max-width: 700px;">
-                            <!-- Horas Pills -->
+                </div>
+
+                <!-- Modal Selección de Horarios -->
+                <div class="modal fade" id="modalHorariosTurno" tabindex="-1" aria-labelledby="modalHorariosTurnoLabel" aria-hidden="true">
+                  <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+                      <div class="modal-header border-bottom-0 pb-1 pt-4 px-4">
+                        <div>
+                          <span class="badge bg-primary-subtle text-primary text-uppercase px-3 py-1 rounded-pill small fw-bold mb-2">Horarios Disponibles</span>
+                          <h4 class="modal-title fw-bold" id="modalHorariosTurnoLabel">Turnos para el <span id="modal-fecha-seleccionada" class="text-primary">--</span></h4>
+                          <div id="modal-sede-info-banner" class="mt-2 text-muted small"></div>
                         </div>
-                        <div class="mt-5">
-                            <button class="btn btn-primary rounded-pill px-5 py-3 fs-5 fw-bold shadow d-none" id="wizard-btn-confirmar">
-                                <i class="bi bi-check-circle me-2"></i> Confirmar Turno
-                            </button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                      </div>
+                      <div class="modal-body p-4 text-center">
+                        <p class="text-muted mb-3">Elige el horario en que deseas atenderte:</p>
+                        <div id="modal-horarios-list" class="d-flex flex-wrap gap-2 justify-content-center py-2" style="max-height: 280px; overflow-y: auto;">
+                          <!-- Horas generadas dinámicamente -->
                         </div>
+                        <div id="modal-horario-seleccionado-info" class="mt-3 text-muted small d-none">
+                          Horario seleccionado: <span class="fw-bold text-primary fs-6" id="modal-hora-texto">--:-- hs</span>
+                        </div>
+                      </div>
+                      <div class="modal-footer border-top-0 pt-0 pb-4 px-4 justify-content-between">
+                        <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cambiar Día</button>
+                        <button type="button" class="btn btn-primary rounded-pill px-5 py-2 fw-bold shadow-sm d-none" id="wizard-btn-confirmar">
+                          <i class="bi bi-check-circle me-1"></i> Confirmar Turno
+                        </button>
+                      </div>
                     </div>
+                  </div>
                 </div>
 
             </div>

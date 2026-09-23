@@ -405,6 +405,22 @@ window.wizardRenderCalendarioMock = function() {
                 `;
                 
                 btn.onclick = () => {
+                    const yaSeleccionado = btn.classList.contains('btn-primary');
+                    
+                    if (yaSeleccionado) {
+                        // Desmarcar al hacer clic de nuevo
+                        btn.classList.remove('btn-primary', 'text-white');
+                        btn.classList.add('btn-outline-primary');
+                        btn.querySelectorAll('.text-muted').forEach(el => el.classList.remove('text-white-50'));
+                        wizardData.fecha = null;
+                        wizardData.hora = null;
+                        const modalEl = document.getElementById('modalHorariosTurno');
+                        const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                        if (modalInstance) modalInstance.hide();
+                        return;
+                    }
+
+                    // Marcar este botón y desmarcar todos los demás
                     document.querySelectorAll('#wizard-dias-container .btn').forEach(b => {
                         b.classList.remove('btn-primary', 'text-white');
                         b.classList.add('btn-outline-primary');
@@ -415,7 +431,7 @@ window.wizardRenderCalendarioMock = function() {
                     btn.querySelectorAll('.text-muted').forEach(el => el.classList.add('text-white-50'));
                     
                     wizardData.fecha = d.toISOString().split('T')[0];
-                    wizardShowHorarios(d);
+                    wizardAbrirModalHorarios(d);
                 };
                 
                 monthContainer.appendChild(btn);
@@ -427,48 +443,53 @@ window.wizardRenderCalendarioMock = function() {
         });
 };
 
-window.wizardShowHorarios = function(dateObj) {
-    const containerHorarios = document.getElementById('wizard-horarios-container');
-    const list = document.getElementById('wizard-horarios-list');
+window.wizardAbrirModalHorarios = function(dateObj) {
+    const list = document.getElementById('modal-horarios-list');
     const btnConfirmar = document.getElementById('wizard-btn-confirmar');
+    const labelFecha = document.getElementById('modal-fecha-seleccionada');
+    const sedeBanner = document.getElementById('modal-sede-info-banner');
+    const infoHora = document.getElementById('modal-horario-seleccionado-info');
+    const textoHora = document.getElementById('modal-hora-texto');
     
-    containerHorarios.classList.remove('d-none');
     list.innerHTML = '';
     btnConfirmar.classList.add('d-none');
-    
-    const diasNombres = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
-    const diaSeleccionado = (dateObj instanceof Date) ? diasNombres[dateObj.getDay()] : null;
-    
+    if (infoHora) infoHora.classList.add('d-none');
+    wizardData.hora = null;
+
+    const diasNombres = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const diasClaves = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
+    const mesNombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+    const diaNombre = diasNombres[dateObj.getDay()];
+    const diaClave = diasClaves[dateObj.getDay()];
+    const diaNumero = dateObj.getDate();
+    const mesNombre = mesNombres[dateObj.getMonth()];
+
+    labelFecha.textContent = `${diaNombre} ${diaNumero} de ${mesNombre}`;
+
     // Buscar si el médico tiene horario cargado para este día
     const horariosDelDia = (wizardData.medico && wizardData.medico.horarios)
-        ? wizardData.medico.horarios.filter(h => h.dia_semana.toLowerCase() === (diaSeleccionado || '').toLowerCase())
+        ? wizardData.medico.horarios.filter(h => h.dia_semana.toLowerCase() === diaClave.toLowerCase())
         : [];
-        
-    let sedeHeader = document.getElementById('wizard-sede-info-banner');
-    if (!sedeHeader) {
-        sedeHeader = document.createElement('div');
-        sedeHeader.id = 'wizard-sede-info-banner';
-        containerHorarios.insertBefore(sedeHeader, list);
-    }
-    
+
     if (horariosDelDia.length > 0) {
         const primerH = horariosDelDia[0];
         wizardData.unidadId = primerH.unidad_id || null;
         wizardData.sedeNombre = primerH.unidad_nombre || '';
-        
+
         if (primerH.unidad_nombre) {
             const dir = [primerH.unidad_calle, primerH.unidad_numero].filter(Boolean).join(' ');
-            sedeHeader.innerHTML = `
-                <div class="alert alert-primary d-inline-flex align-items-center py-2 px-3 rounded-pill mb-3 shadow-sm border-0">
-                    <i class="bi bi-geo-alt-fill text-primary me-2 fs-5"></i>
-                    <span>Centro de atención: <strong>${primerH.unidad_nombre}</strong>${dir ? ' (' + dir + ')' : ''}</span>
-                </div>
+            sedeBanner.innerHTML = `
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill fs-6 fw-semibold">
+                    <i class="bi bi-geo-alt-fill me-1"></i> ${primerH.unidad_nombre}${dir ? ' — ' + dir : ''}
+                </span>
             `;
-            sedeHeader.classList.remove('d-none');
+            sedeBanner.classList.remove('d-none');
         } else {
-            sedeHeader.classList.add('d-none');
+            sedeBanner.innerHTML = '';
+            sedeBanner.classList.add('d-none');
         }
-        
+
         // Generar slots basados en hora_inicio, hora_fin y duracion_turno_minutos
         horariosDelDia.forEach(bloque => {
             const duracion = parseInt(bloque.duracion_turno_minutos) || 30;
@@ -484,15 +505,22 @@ window.wizardShowHorarios = function(dateObj) {
                 const timeStr = `${String(hr).padStart(2, '0')}:${String(mn).padStart(2, '0')}`;
                 
                 const btn = document.createElement('button');
-                btn.className = 'btn btn-outline-primary px-4 py-2 fw-bold shadow-sm';
-                btn.style.borderRadius = '50px';
-                btn.textContent = timeStr;
+                btn.className = 'btn btn-outline-primary px-4 py-2 fw-bold shadow-sm rounded-pill';
+                btn.textContent = timeStr + ' hs';
                 btn.onclick = () => {
-                    document.querySelectorAll('#wizard-horarios-list .btn').forEach(b => b.classList.remove('active', 'btn-primary', 'text-white'));
-                    btn.classList.add('active', 'btn-primary', 'text-white');
+                    document.querySelectorAll('#modal-horarios-list .btn').forEach(b => {
+                        b.classList.remove('btn-primary', 'text-white');
+                        b.classList.add('btn-outline-primary');
+                    });
+                    btn.classList.remove('btn-outline-primary');
+                    btn.classList.add('btn-primary', 'text-white');
                     wizardData.hora = timeStr;
                     wizardData.unidadId = bloque.unidad_id || null;
                     wizardData.sedeNombre = bloque.unidad_nombre || '';
+                    if (infoHora && textoHora) {
+                        textoHora.textContent = timeStr + ' hs';
+                        infoHora.classList.remove('d-none');
+                    }
                     btnConfirmar.classList.remove('d-none');
                 };
                 list.appendChild(btn);
@@ -500,10 +528,11 @@ window.wizardShowHorarios = function(dateObj) {
             }
         });
     } else {
-        sedeHeader.classList.add('d-none');
+        sedeBanner.innerHTML = '';
+        sedeBanner.classList.add('d-none');
         wizardData.unidadId = null;
         wizardData.sedeNombre = null;
-        
+
         let baseHour = 9;
         for(let i=0; i<6; i++) {
             let hr = baseHour + Math.floor(i/2);
@@ -511,18 +540,29 @@ window.wizardShowHorarios = function(dateObj) {
             let timeStr = `${hr.toString().padStart(2, '0')}:${min}`;
             
             const btn = document.createElement('button');
-            btn.className = 'btn btn-outline-primary px-4 py-2 fw-bold shadow-sm';
-            btn.style.borderRadius = '50px';
-            btn.textContent = timeStr;
+            btn.className = 'btn btn-outline-primary px-4 py-2 fw-bold shadow-sm rounded-pill';
+            btn.textContent = timeStr + ' hs';
             btn.onclick = () => {
-                document.querySelectorAll('#wizard-horarios-list .btn').forEach(b => b.classList.remove('active', 'btn-primary', 'text-white'));
-                btn.classList.add('active', 'btn-primary', 'text-white');
+                document.querySelectorAll('#modal-horarios-list .btn').forEach(b => {
+                    b.classList.remove('btn-primary', 'text-white');
+                    b.classList.add('btn-outline-primary');
+                });
+                btn.classList.remove('btn-outline-primary');
+                btn.classList.add('btn-primary', 'text-white');
                 wizardData.hora = timeStr;
+                if (infoHora && textoHora) {
+                    textoHora.textContent = timeStr + ' hs';
+                    infoHora.classList.remove('d-none');
+                }
                 btnConfirmar.classList.remove('d-none');
             };
             list.appendChild(btn);
         }
     }
+
+    const modalEl = document.getElementById('modalHorariosTurno');
+    const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modalInstance.show();
 };
 
 // Botones de retroceso
