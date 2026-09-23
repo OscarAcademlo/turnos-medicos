@@ -23,8 +23,11 @@
 <!-- Navbar Superior -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top shadow-sm">
     <div class="container-fluid px-4">
-        <a class="navbar-brand d-flex align-items-center fw-bold" href="#">
-            <i class="bi bi-heart-pulse-fill me-2 fs-4"></i> Clínica Médica
+        <button class="navbar-toggler d-md-none collapsed me-2" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <a class="navbar-brand d-flex align-items-center fw-bold me-auto" href="#">
+            <i class="bi bi-heart-pulse-fill me-2 fs-4"></i> <span id="page-title">Clínica Médica</span>
         </a>
         
         <!-- Controles derecha -->
@@ -85,7 +88,7 @@
         </nav>
 
         <!-- Contenido Principal -->
-        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-3 px-md-4 py-4">
             
             <!-- VISTA: INICIO / DASHBOARD -->
             <div id="content-dashboard">
