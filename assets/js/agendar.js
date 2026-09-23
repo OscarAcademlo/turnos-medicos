@@ -84,11 +84,28 @@ window.wizardCargarObrasSociales = function() {
         .then(res => res.json())
         .then(data => {
             container.innerHTML = '';
-            if(data.length === 0 || !data[0].obras_sociales || data[0].obras_sociales.length === 0) {
-                container.innerHTML = '<span class="text-muted">No atiende por obra social.</span>';
+            if(!data[0].obras_sociales || data[0].obras_sociales.length === 0) {
+                // Si el médico no tiene obras sociales asignadas, cargamos TODAS por defecto
+                // para que el circuito pueda continuar y no se tranque.
+                fetch('backend/api/crud_obras_sociales.php')
+                    .then(res => res.json())
+                    .then(todas => {
+                        if (todas.length === 0) {
+                            container.innerHTML = '<span class="text-muted">No hay obras sociales cargadas en el sistema.</span>';
+                            return;
+                        }
+                        todas.forEach(os => {
+                            const btn = document.createElement('button');
+                            btn.className = 'pill-btn px-4 py-2';
+                            btn.textContent = os.nombre;
+                            btn.onclick = () => wizardSelectCobertura(os.id, os.nombre);
+                            container.appendChild(btn);
+                        });
+                    });
                 return;
             }
-            // Agrupar por obra social y mostrar
+            
+            // Si el médico SÍ tiene obras sociales específicas asignadas, mostrar esas:
             data[0].obras_sociales.forEach(os => {
                 const btn = document.createElement('button');
                 btn.className = 'pill-btn px-4 py-2';
