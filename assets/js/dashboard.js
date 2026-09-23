@@ -302,7 +302,41 @@ if(modalTurno) {
                     theme: 'bootstrap-5',
                     dropdownParent: $('#modalNuevoTurno')
                 });
+                $('#turno-plan').select2({
+                    theme: 'bootstrap-5',
+                    dropdownParent: $('#modalNuevoTurno')
+                });
             });
+            
+        // Cambio de Obra Social -> Cargar Planes
+        $('#turno-obra-social').on('change', function() {
+            const osId = $(this).val();
+            const planSel = document.getElementById('turno-plan');
+            
+            if (osId === 'particular') {
+                planSel.innerHTML = '<option value="particular">Particular</option>';
+                planSel.disabled = true;
+                return;
+            }
+            
+            planSel.disabled = true;
+            planSel.innerHTML = '<option value="" selected disabled>Cargando planes...</option>';
+            
+            fetch(`backend/api/get_planes.php?obra_social_id=${osId}`)
+                .then(res => res.json())
+                .then(data => {
+                    planSel.innerHTML = '<option value="" selected disabled>Selecciona tu plan...</option>';
+                    if(data.length > 0) {
+                        data.forEach(p => {
+                            planSel.innerHTML += `<option value="${p.id}">${p.nombre}</option>`;
+                        });
+                        planSel.disabled = false;
+                    } else {
+                        planSel.innerHTML = '<option value="unico" selected>Plan Único / No especifica</option>';
+                        planSel.disabled = false;
+                    }
+                });
+        });
     });
 
     // Cambio de Especialidad -> Cargar Médicos

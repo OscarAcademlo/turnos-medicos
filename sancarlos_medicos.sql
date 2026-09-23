@@ -1,4 +1,5 @@
 SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
 TRUNCATE TABLE medicos_especialidades;
 DELETE FROM especialidades;
 DELETE FROM usuarios WHERE rol = 'medico';
@@ -147,4 +148,4 @@ INSERT INTO usuarios (id, firebase_uid, nombre, apellido, email, rol, contrasena
 INSERT INTO medicos_especialidades (usuario_id, especialidad_id) VALUES (1060, 18);
 INSERT INTO especialidades (id, nombre) VALUES (19, 'Deportología');
 INSERT INTO usuarios (id, firebase_uid, nombre, apellido, email, rol, contrasena) VALUES (1061, 'local_1061', 'Pablo', 'Cozzarin (Pasaje Gutiérrez 980)', 'pablo.cozzarin@sancarlos.com', 'medico', '$2y$10$abcdefghijklmnopqrstuv');
-INSERT INTO medicos_especialidades (usuario_id, especialidad_id) VALUES (1061, 19);
+INSERT INTO medicos_especialidades (usuario_id, especialidad_id) VALUES (1061, 19);SET FOREIGN_KEY_CHECKS = 1;

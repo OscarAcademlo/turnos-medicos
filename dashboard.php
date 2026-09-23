@@ -243,9 +243,16 @@
             </div>
             
             <div class="mb-4">
-                <label class="form-label fw-semibold text-muted small">Cobertura Médica (Obra Social)</label>
+                <label class="form-label fw-semibold text-muted small">Obra Social</label>
                 <select class="form-select" id="turno-obra-social" required>
                     <option value="" selected disabled>Cargando obras sociales...</option>
+                </select>
+            </div>
+            
+            <div class="mb-4">
+                <label class="form-label fw-semibold text-muted small">Plan</label>
+                <select class="form-select" id="turno-plan" required disabled>
+                    <option value="" selected disabled>Primero selecciona una obra social...</option>
                 </select>
             </div>
 
