@@ -41,10 +41,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (filterEspecialidad.value) params.append('especialidad_id', filterEspecialidad.value);
         if (filterCobertura.value) params.append('obra_social_id', filterCobertura.value);
 
+let medicosGlobal = [];
+
         fetch(`backend/api/get_public_agenda.php?${params.toString()}`)
             .then(response => response.json())
             .then(medicos => {
                 resultsContainer.innerHTML = '';
+                medicosGlobal = medicos || [];
                 
                 if (!medicos || medicos.length === 0) {
                     resultsContainer.innerHTML = `<div class="alert alert-info text-center mt-4">No se encontraron profesionales con esos criterios.</div>`;
@@ -58,23 +61,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Especialidades
                     const especialidadesText = medico.especialidades.map(e => e.nombre).join(', ') || 'Medicina General';
                     
-                    // Coberturas
-                    let coberturasText = medico.obras_sociales.length > 0 
-                        ? 'Atiende: ' + medico.obras_sociales.map(o => o.nombre).join(', ') 
-                        : 'Particular / Consultar coberturas';
-                        
-                    // Limitar el texto de coberturas si es muy largo
-                    if (coberturasText.length > 60) {
-                        coberturasText = coberturasText.substring(0, 60) + '...';
-                    }
+                    // Botón Coberturas
+                    const cantCoberturas = medico.obras_sociales ? medico.obras_sociales.length : 0;
+                    const coberturasBtnHtml = cantCoberturas > 0
+                        ? `<button type="button" class="btn btn-outline-primary btn-sm rounded-pill w-100 mb-3 fw-medium" onclick="abrirModalCoberturasPaciente(${medico.id})">
+                               <i class="bi bi-shield-check me-1"></i> Ver Coberturas (${cantCoberturas})
+                           </button>`
+                        : `<button type="button" class="btn btn-outline-secondary btn-sm rounded-pill w-100 mb-3" onclick="abrirModalCoberturasPaciente(${medico.id})">
+                               <i class="bi bi-info-circle me-1"></i> Particular / Ver coberturas
+                           </button>`;
                     
-                    // Horarios
+                    // Horarios (formato 24 hs estricto)
                     let horariosHtml = '';
                     if (medico.horarios && medico.horarios.length > 0) {
                         medico.horarios.slice(0, 3).forEach(h => {
                             const inicio = h.hora_inicio.substring(0, 5);
                             const fin = h.hora_fin.substring(0, 5);
-                            horariosHtml += `<div class="small"><i class="bi bi-clock me-1"></i> ${h.dia_semana}: ${inicio} - ${fin}</div>`;
+                            horariosHtml += `<div class="small"><i class="bi bi-clock me-1 text-primary"></i> <strong>${h.dia_semana}:</strong> ${inicio} a ${fin} hs</div>`;
                         });
                         if(medico.horarios.length > 3) {
                             horariosHtml += `<div class="small text-primary mt-1">+${medico.horarios.length - 3} horarios más</div>`;
@@ -97,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div class="card-body d-flex flex-column text-center">
                                 <h5 class="card-title fw-bold mb-1">${medico.nombre} ${medico.apellido}</h5>
                                 <h6 class="card-subtitle mb-3 text-primary fw-semibold">${especialidadesText}</h6>
-                                <p class="card-text text-muted small mb-3 flex-grow-1" style="min-height: 40px;">${coberturasText}</p>
+                                ${coberturasBtnHtml}
                                 <div class="bg-light rounded p-2 mb-3 text-start">
                                     ${horariosHtml}
                                 </div>
@@ -127,8 +130,62 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Función para el botón Agendar
 window.agendarTurno = function(medicoId) {
-    // Redirigir al Asistente Público
     window.location.href = 'agendar.php?medico_id=' + medicoId;
+};
+
+// Modal de Coberturas para el Paciente
+window.abrirModalCoberturasPaciente = function(medicoId) {
+    const med = medicosGlobal.find(m => m.id == medicoId);
+    if (!med) return;
+
+    const modalTitle = document.getElementById('modal-coberturas-paciente-title');
+    const infoContainer = document.getElementById('modal-coberturas-paciente-medico-info');
+    const listContainer = document.getElementById('modal-coberturas-paciente-list');
+    const btnAgendar = document.getElementById('modal-coberturas-paciente-btn-agendar');
+
+    const avatarDefault = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(med.nombre + ' ' + med.apellido) + '&background=e9ecef&color=6c757d&size=200';
+    const foto = (med.foto_perfil && med.foto_perfil.trim() !== '') ? med.foto_perfil : (med.foto_url || avatarDefault);
+
+    infoContainer.innerHTML = `
+        <img src="${foto}" class="rounded-circle shadow-sm mb-2" style="width: 80px; height: 80px; object-fit: cover;" onerror="this.onerror=null; this.src='${avatarDefault}';">
+        <h5 class="fw-bold mb-0">${med.nombre} ${med.apellido}</h5>
+        <small class="text-primary fw-semibold">${(med.especialidades || []).map(e => e.nombre).join(', ') || 'Medicina General'}</small>
+    `;
+
+    if (med.obras_sociales && med.obras_sociales.length > 0) {
+        let itemsHtml = '<h6 class="fw-bold text-muted small text-uppercase mb-2">Coberturas y Obras Sociales Aceptadas:</h6>';
+        itemsHtml += '<div class="list-group list-group-flush border rounded-3 p-2 bg-light">';
+        med.obras_sociales.forEach(os => {
+            itemsHtml += `
+                <div class="list-group-item bg-transparent d-flex align-items-center py-2 border-0">
+                    <i class="bi bi-shield-check text-success fs-5 me-2"></i>
+                    <span class="fw-medium">${os.nombre}</span>
+                </div>
+            `;
+        });
+        itemsHtml += '</div>';
+        itemsHtml += '<p class="text-muted small mt-2 mb-0"><i class="bi bi-info-circle me-1"></i> Puedes seleccionar tu cobertura al agendar el turno.</p>';
+        listContainer.innerHTML = itemsHtml;
+    } else {
+        listContainer.innerHTML = `
+            <div class="alert alert-info border-0 rounded-3 mb-0">
+                <div class="d-flex align-items-start">
+                    <i class="bi bi-info-circle-fill fs-4 me-2"></i>
+                    <div>
+                        <strong>Atención Particular</strong>
+                        <p class="small mb-0">Este profesional actualmente no tiene convenios de obras sociales directos cargados o atiende de forma particular. Puedes solicitar factura para reintegro.</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    btnAgendar.onclick = function() {
+        window.location.href = 'agendar.php?medico_id=' + med.id;
+    };
+
+    const modal = new bootstrap.Modal(document.getElementById('modalCoberturasPaciente'));
+    modal.show();
 };
 
 // Utils: Debounce

@@ -47,16 +47,30 @@ if(!empty($data->id)) {
         foreach($params as $key => &$val) {
             $stmt->bindParam($key, $val);
         }
-        
-        if($stmt->execute()) {
-            echo json_encode(array("message" => "Médico actualizado exitosamente."));
-        } else {
-            http_response_code(503);
-            echo json_encode(array("message" => "Error al actualizar médico."));
-        }
-    } else {
-        echo json_encode(array("message" => "No hay campos para actualizar."));
+        $stmt->execute();
     }
+
+    // Actualizar especialidades si se enviaron
+    if(isset($data->especialidades) && is_array($data->especialidades)) {
+        $db->exec("CREATE TABLE IF NOT EXISTS medicos_especialidades (
+            usuario_id INT NOT NULL,
+            especialidad_id INT NOT NULL,
+            PRIMARY KEY (usuario_id, especialidad_id)
+        )");
+        
+        $del = $db->prepare("DELETE FROM medicos_especialidades WHERE usuario_id = :uid");
+        $del->execute([':uid' => $data->id]);
+        
+        $ins = $db->prepare("INSERT INTO medicos_especialidades (usuario_id, especialidad_id) VALUES (:uid, :eid)");
+        foreach($data->especialidades as $eid) {
+            $eidInt = intval($eid);
+            if($eidInt > 0) {
+                $ins->execute([':uid' => $data->id, ':eid' => $eidInt]);
+            }
+        }
+    }
+
+    echo json_encode(array("message" => "Médico actualizado exitosamente."));
 } else {
     http_response_code(400);
     echo json_encode(array("message" => "ID de médico requerido."));

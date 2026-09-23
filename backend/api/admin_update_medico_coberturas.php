@@ -17,7 +17,7 @@ $database = new Database();
 $db = $database->getConnection();
 $data = json_decode(file_get_contents("php://input"));
 
-if(!empty($data->usuario_id) && isset($data->planes)) {
+if(!empty($data->usuario_id)) {
     $db->beginTransaction();
     
     try {
@@ -33,36 +33,46 @@ if(!empty($data->usuario_id) && isset($data->planes)) {
         $stmt_del_os->bindParam(":id", $data->usuario_id);
         $stmt_del_os->execute();
         
-        if (count($data->planes) > 0) {
-            // 3. Insertar nuevos planes y obtener sus obras sociales
+        $obras_sociales_map = [];
+
+        // Obras sociales directas
+        if (!empty($data->obras_sociales) && is_array($data->obras_sociales)) {
+            foreach($data->obras_sociales as $osid) {
+                $osidInt = intval($osid);
+                if ($osidInt > 0) {
+                    $obras_sociales_map[$osidInt] = true;
+                }
+            }
+        }
+
+        // Planes y sus obras sociales
+        if (!empty($data->planes) && is_array($data->planes)) {
             $q_ins = "INSERT INTO medicos_planes (usuario_id, plan_id) VALUES (:uid, :pid)";
             $stmt_ins = $db->prepare($q_ins);
             
-            $obras_sociales = []; // para almacenar os unicas
-            
+            $q_os = "SELECT obra_social_id FROM planes_obras_sociales WHERE id = :pid";
+            $stmt_os = $db->prepare($q_os);
+
             foreach($data->planes as $pid) {
-                $stmt_ins->bindParam(":uid", $data->usuario_id);
-                $stmt_ins->bindParam(":pid", $pid);
-                $stmt_ins->execute();
-                
-                // Obtener OS de este plan
-                $q_os = "SELECT obra_social_id FROM planes_obras_sociales WHERE id = :pid";
-                $stmt_os = $db->prepare($q_os);
-                $stmt_os->bindParam(":pid", $pid);
-                $stmt_os->execute();
-                $os_id = $stmt_os->fetchColumn();
-                if ($os_id) {
-                    $obras_sociales[$os_id] = true;
+                $pidInt = intval($pid);
+                if ($pidInt > 0) {
+                    $stmt_ins->execute([':uid' => $data->usuario_id, ':pid' => $pidInt]);
+                    
+                    $stmt_os->execute([':pid' => $pidInt]);
+                    $os_id = $stmt_os->fetchColumn();
+                    if ($os_id) {
+                        $obras_sociales_map[intval($os_id)] = true;
+                    }
                 }
             }
-            
-            // 4. Insertar OS correspondientes para que los joins básicos funcionen si es necesario
+        }
+
+        // Insertar en medicos_obras_sociales
+        if (count($obras_sociales_map) > 0) {
             $q_ins_os = "INSERT IGNORE INTO medicos_obras_sociales (usuario_id, obra_social_id) VALUES (:uid, :os_id)";
             $stmt_ins_os = $db->prepare($q_ins_os);
-            foreach(array_keys($obras_sociales) as $osid) {
-                $stmt_ins_os->bindParam(":uid", $data->usuario_id);
-                $stmt_ins_os->bindParam(":os_id", $osid);
-                $stmt_ins_os->execute();
+            foreach(array_keys($obras_sociales_map) as $osid) {
+                $stmt_ins_os->execute([':uid' => $data->usuario_id, ':os_id' => $osid]);
             }
         }
         

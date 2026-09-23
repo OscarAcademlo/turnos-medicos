@@ -29,13 +29,10 @@ try {
     }
 } catch(Exception $e) { /* silencioso */ }
 
-// Traer todos los usuarios que son médicos + su especialidad
+// Traer todos los usuarios que son médicos
 $query = "
-    SELECT u.id, u.nombre, u.apellido, u.email, u.telefono, u.foto_perfil, u.biografia, u.direccion, u.matricula,
-           e.id as especialidad_id, e.nombre as especialidad_nombre
+    SELECT u.id, u.nombre, u.apellido, u.email, u.telefono, u.foto_perfil, u.biografia, u.direccion, u.matricula
     FROM usuarios u
-    LEFT JOIN medicos_especialidades me ON u.id = me.usuario_id
-    LEFT JOIN especialidades e ON me.especialidad_id = e.id
     WHERE u.rol = 'medico'
     ORDER BY u.nombre ASC
 ";
@@ -43,14 +40,30 @@ $stmt = $db->prepare($query);
 $stmt->execute();
 $medicos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Para cada médico, traer sus planes y horarios
+// Para cada médico, traer sus especialidades, obras sociales, planes y horarios
 foreach($medicos as &$medico) {
+    // Especialidades
+    $q_esp = "SELECT e.id, e.nombre FROM medicos_especialidades me JOIN especialidades e ON me.especialidad_id = e.id WHERE me.usuario_id = :id";
+    $s_esp = $db->prepare($q_esp);
+    $s_esp->bindParam(":id", $medico['id']);
+    $s_esp->execute();
+    $medico['especialidades'] = $s_esp->fetchAll(PDO::FETCH_ASSOC);
+    $medico['especialidades_ids'] = array_map('intval', array_column($medico['especialidades'], 'id'));
+    $medico['especialidad_nombre'] = implode(', ', array_column($medico['especialidades'], 'nombre'));
+
+    // Obras Sociales directas aceptadas
+    $q_os = "SELECT obra_social_id FROM medicos_obras_sociales WHERE usuario_id = :id";
+    $s_os = $db->prepare($q_os);
+    $s_os->bindParam(":id", $medico['id']);
+    $s_os->execute();
+    $medico['obras_sociales'] = array_map('intval', $s_os->fetchAll(PDO::FETCH_COLUMN));
+
     // Planes aceptados
     $q_planes = "SELECT plan_id FROM medicos_planes WHERE usuario_id = :id";
     $s_planes = $db->prepare($q_planes);
     $s_planes->bindParam(":id", $medico['id']);
     $s_planes->execute();
-    $medico['planes'] = $s_planes->fetchAll(PDO::FETCH_COLUMN);
+    $medico['planes'] = array_map('intval', $s_planes->fetchAll(PDO::FETCH_COLUMN));
 
     // Horarios
     $q_h = "

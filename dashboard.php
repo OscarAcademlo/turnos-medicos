@@ -545,6 +545,13 @@
                 <input type="text" class="form-control bg-light border-0 rounded-3" id="edit-medico-matricula">
             </div>
             <div class="mb-3">
+                <label class="form-label fw-semibold">Especialidades</label>
+                <div id="edit-medico-especialidades-container" class="p-3 bg-light rounded-3" style="max-height: 180px; overflow-y: auto;">
+                    <!-- checkboxes de especialidades cargados dinámicamente -->
+                </div>
+                <small class="text-muted">Selecciona una o más especialidades para este profesional.</small>
+            </div>
+            <div class="mb-3">
                 <label class="form-label fw-semibold">Dirección de Atención</label>
                 <input type="text" class="form-control bg-light border-0 rounded-3" id="edit-medico-direccion">
             </div>

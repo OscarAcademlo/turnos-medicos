@@ -162,10 +162,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Lógica Cerrar Sesión
     document.getElementById('logout-btn').addEventListener('click', (e) => {
         e.preventDefault();
-        auth.signOut().then(() => {
-            localStorage.removeItem('user');
-            window.location.href = 'login.php';
-        });
+        fetch('backend/api/logout.php')
+            .finally(() => {
+                auth.signOut().finally(() => {
+                    localStorage.removeItem('user');
+                    window.location.href = 'index.php';
+                });
+            });
     });
 });
 
@@ -873,6 +876,7 @@ document.getElementById('form-configuracion').addEventListener('submit', functio
 // ==========================================
 let medicosDisponibles = [];
 let obrasSocialesDisponibles = [];
+let especialidadesDisponibles = [];
 
 function cargarMedicosAdmin() {
     const container = document.getElementById('medicos-container');
@@ -883,13 +887,15 @@ function cargarMedicosAdmin() {
         </div>
     `;
 
-    // Cargar médicos y paralelamente cargar Obras Sociales para el modal de coberturas
+    // Cargar médicos, Obras Sociales y Especialidades
     Promise.all([
         fetch('backend/api/admin_get_medicos.php').then(res => res.json()),
-        fetch('backend/api/get_obras_sociales.php').then(res => res.json())
-    ]).then(([medicos, obras]) => {
+        fetch('backend/api/get_obras_sociales.php').then(res => res.json()),
+        fetch('backend/api/get_especialidades.php').then(res => res.json())
+    ]).then(([medicos, obras, especialidades]) => {
         medicosDisponibles = medicos;
         obrasSocialesDisponibles = obras;
+        especialidadesDisponibles = especialidades || [];
         
         renderMedicos(medicosDisponibles);
     }).catch(err => {
@@ -912,9 +918,11 @@ function renderMedicos(medicos) {
             : `<div class="rounded-circle mb-3 bg-light d-inline-flex align-items-center justify-content-center" style="width:100px;height:100px;border:3px solid #e9ecef;"><i class="bi bi-person-fill text-secondary" style="font-size:3rem;"></i></div>`;
         
         const horariosResumen = med.horarios && med.horarios.length > 0
-            ? med.horarios.map(h => `<span class="badge bg-light text-dark border me-1 mb-1">${h.dia_semana} ${h.hora_inicio.slice(0,5)}-${h.hora_fin.slice(0,5)}</span>`).join('')
+            ? med.horarios.map(h => `<span class="badge bg-light text-dark border me-1 mb-1">${h.dia_semana} ${h.hora_inicio.slice(0,5)} a ${h.hora_fin.slice(0,5)} hs</span>`).join('')
             : `<span class="text-muted small">Sin horarios configurados</span>`;
         
+        const cantCoberturas = (med.obras_sociales ? med.obras_sociales.length : 0) + (med.planes ? med.planes.length : 0);
+
         const html = `
             <div class="col-md-6 col-lg-4">
                 <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden">
@@ -926,13 +934,13 @@ function renderMedicos(medicos) {
                         <div class="mb-3 text-start px-2">${horariosResumen}</div>
                         <div class="d-grid gap-2">
                             <button class="btn btn-outline-primary btn-sm rounded-pill" onclick="abrirEditMedico(${med.id})">
-                                <i class="bi bi-pencil-square me-1"></i> Editar Perfil
+                                <i class="bi bi-pencil-square me-1"></i> Editar Perfil y Especialidades
                             </button>
                             <button class="btn btn-outline-warning btn-sm rounded-pill" onclick="abrirHorariosMedico(${med.id})">
                                 <i class="bi bi-clock me-1"></i> Horarios (${med.horarios ? med.horarios.length : 0})
                             </button>
                             <button class="btn btn-outline-success btn-sm rounded-pill" onclick="abrirCoberturasMedico(${med.id})">
-                                <i class="bi bi-shield-check me-1"></i> Coberturas (${med.planes ? med.planes.length : 0})
+                                <i class="bi bi-shield-check me-1"></i> Coberturas (${cantCoberturas})
                             </button>
                         </div>
                     </div>
@@ -964,6 +972,25 @@ function abrirEditMedico(id) {
     document.getElementById('edit-medico-biografia').value = med.biografia || '';
     document.getElementById('edit-medico-foto').value = '';
     
+    // Especialidades dinámicas
+    const espContainer = document.getElementById('edit-medico-especialidades-container');
+    const medEspIds = med.especialidades_ids || (med.especialidades ? med.especialidades.map(e => e.id) : []);
+    if (espContainer) {
+        if (!especialidadesDisponibles || especialidadesDisponibles.length === 0) {
+            espContainer.innerHTML = '<span class="text-muted small">No hay especialidades configuradas. Puedes agregarlas en la pestaña Especialidades.</span>';
+        } else {
+            espContainer.innerHTML = especialidadesDisponibles.map(esp => {
+                const checked = medEspIds.includes(esp.id) ? 'checked' : '';
+                return `
+                    <div class="form-check mb-1">
+                        <input class="form-check-input check-especialidad-medico" type="checkbox" value="${esp.id}" id="edit-esp-${esp.id}" ${checked}>
+                        <label class="form-check-label" for="edit-esp-${esp.id}">${esp.nombre}</label>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+
     // Manejar foto: mostrar imagen si existe, o placeholder
     const preview = document.getElementById('edit-medico-foto-preview');
     const placeholder = document.getElementById('edit-medico-foto-placeholder');
@@ -1026,12 +1053,16 @@ document.getElementById('form-edit-medico').addEventListener('submit', function(
     // Si el img está oculto (placeholder activo), no hay foto
     if(preview.classList.contains('d-none')) fotoUrl = null;
     
+    const espChecks = document.querySelectorAll('.check-especialidad-medico:checked');
+    const especialidadesSeleccionadas = Array.from(espChecks).map(cb => parseInt(cb.value));
+
     const payload = {
         id: document.getElementById('edit-medico-id').value,
         matricula: document.getElementById('edit-medico-matricula').value,
         direccion: document.getElementById('edit-medico-direccion').value,
         biografia: document.getElementById('edit-medico-biografia').value,
-        foto_perfil: fotoUrl
+        foto_perfil: fotoUrl,
+        especialidades: especialidadesSeleccionadas
     };
     
     fetch('backend/api/admin_update_medico.php', {
@@ -1059,37 +1090,42 @@ function abrirCoberturasMedico(id) {
     const container = document.getElementById('coberturas-list-container');
     container.innerHTML = '<div class="text-center"><div class="spinner-border text-primary spinner-border-sm"></div></div>';
     
-    // Obtener los planes marcados previamente por este medico
     const planesMed = med.planes || [];
+    const obrasMed = med.obras_sociales || [];
     
-    // Armar UI agrupada por OS
     let html = '';
     obrasSocialesDisponibles.forEach(os => {
+        const tienePlanes = os.planes && os.planes.length > 0;
+        const osChecked = obrasMed.includes(os.id) || (tienePlanes && os.planes.some(p => planesMed.includes(p.id)));
+        
         html += `
-            <div class="card mb-3 border-0 shadow-sm">
-                <div class="card-header bg-light border-0 fw-bold">
-                    ${os.nombre}
+            <div class="card mb-3 border-0 shadow-sm rounded-3">
+                <div class="card-header bg-light border-0 d-flex justify-content-between align-items-center">
+                    <div class="form-check mb-0">
+                        <input class="form-check-input check-os-medico" type="checkbox" value="${os.id}" id="os-check-${os.id}" ${osChecked ? 'checked' : ''} onchange="togglePlanesOS(${os.id}, this.checked)">
+                        <label class="form-check-label fw-bold" for="os-check-${os.id}">${os.nombre}</label>
+                    </div>
+                    ${tienePlanes ? `<span class="badge bg-white text-secondary border small">${os.planes.length} planes</span>` : '<span class="badge bg-secondary-subtle text-secondary small">Convenio directo</span>'}
                 </div>
-                <div class="card-body py-2">
         `;
         
-        if(!os.planes || os.planes.length === 0) {
-            html += `<p class="text-muted small mb-0">No hay planes registrados. Se asume plan único.</p>`;
-        } else {
+        if (tienePlanes) {
+            html += `<div class="card-body py-2 ps-4" id="planes-os-${os.id}">`;
             os.planes.forEach(plan => {
-                const checked = planesMed.includes(plan.id) ? 'checked' : '';
+                const planChecked = planesMed.includes(plan.id);
                 html += `
-                    <div class="form-check">
-                        <input class="form-check-input check-plan-medico" type="checkbox" value="${plan.id}" id="plan-${plan.id}" ${checked}>
-                        <label class="form-check-label" for="plan-${plan.id}">
+                    <div class="form-check mb-1">
+                        <input class="form-check-input check-plan-medico plan-de-os-${os.id}" type="checkbox" value="${plan.id}" data-os-id="${os.id}" id="plan-${plan.id}" ${planChecked ? 'checked' : ''} onchange="syncOSFromPlan(${os.id})">
+                        <label class="form-check-label small" for="plan-${plan.id}">
                             ${plan.nombre}
                         </label>
                     </div>
                 `;
             });
+            html += `</div>`;
         }
         
-        html += `</div></div>`;
+        html += `</div>`;
     });
     
     container.innerHTML = html;
@@ -1098,6 +1134,20 @@ function abrirCoberturasMedico(id) {
     modal.show();
 }
 
+window.togglePlanesOS = function(osId, isChecked) {
+    const planChecks = document.querySelectorAll(`.plan-de-os-${osId}`);
+    planChecks.forEach(cb => { cb.checked = isChecked; });
+};
+
+window.syncOSFromPlan = function(osId) {
+    const planChecks = document.querySelectorAll(`.plan-de-os-${osId}`);
+    const anyChecked = Array.from(planChecks).some(cb => cb.checked);
+    const osCheck = document.getElementById(`os-check-${osId}`);
+    if (osCheck && anyChecked) {
+        osCheck.checked = true;
+    }
+};
+
 // Guardar Coberturas
 document.getElementById('form-coberturas-medico').addEventListener('submit', function(e) {
     e.preventDefault();
@@ -1105,14 +1155,18 @@ document.getElementById('form-coberturas-medico').addEventListener('submit', fun
     btn.disabled = true;
     
     const usuarioId = document.getElementById('coberturas-medico-id').value;
-    const checkboxes = document.querySelectorAll('.check-plan-medico:checked');
-    const planesSeleccionados = Array.from(checkboxes).map(cb => parseInt(cb.value));
+    const osCheckboxes = document.querySelectorAll('.check-os-medico:checked');
+    const obrasSeleccionadas = Array.from(osCheckboxes).map(cb => parseInt(cb.value));
+
+    const planCheckboxes = document.querySelectorAll('.check-plan-medico:checked');
+    const planesSeleccionados = Array.from(planCheckboxes).map(cb => parseInt(cb.value));
     
     fetch('backend/api/admin_update_medico_coberturas.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             usuario_id: usuarioId,
+            obras_sociales: obrasSeleccionadas,
             planes: planesSeleccionados
         })
     })
@@ -1250,6 +1304,23 @@ function abrirHorariosMedico(id) {
     new bootstrap.Modal(document.getElementById('modalHorariosMedico')).show();
 }
 
+const HORAS_24 = [];
+for (let hr = 6; hr <= 23; hr++) {
+    const hh = String(hr).padStart(2, '0');
+    HORAS_24.push(`${hh}:00`);
+    HORAS_24.push(`${hh}:30`);
+}
+
+function generarOpcionesHoras(horaActual, defecto) {
+    const hora = (horaActual && horaActual.length >= 5) ? horaActual.slice(0, 5) : defecto;
+    let horas = [...HORAS_24];
+    if (hora && !horas.includes(hora)) {
+        horas.push(hora);
+        horas.sort();
+    }
+    return horas.map(h => `<option value="${h}" ${h === hora ? 'selected' : ''}>${h} hs</option>`).join('');
+}
+
 function renderBloqueHorario(container, h) {
     const sedesOpts = sedesDisponibles.map(s =>
         `<option value="${s.id}" ${h && h.unidad_id == s.id ? 'selected' : ''}>${s.nombre}</option>`
@@ -1266,12 +1337,16 @@ function renderBloqueHorario(container, h) {
                 </select>
             </div>
             <div class="col-md-2">
-                <label class="form-label small fw-semibold">Desde</label>
-                <input type="time" class="form-control form-control-sm hb-inicio" value="${h ? h.hora_inicio.slice(0,5) : '08:00'}">
+                <label class="form-label small fw-semibold">Desde (24hs)</label>
+                <select class="form-select form-select-sm hb-inicio">
+                    ${generarOpcionesHoras(h ? h.hora_inicio : null, '08:00')}
+                </select>
             </div>
             <div class="col-md-2">
-                <label class="form-label small fw-semibold">Hasta</label>
-                <input type="time" class="form-control form-control-sm hb-fin" value="${h ? h.hora_fin.slice(0,5) : '13:00'}">
+                <label class="form-label small fw-semibold">Hasta (24hs)</label>
+                <select class="form-select form-select-sm hb-fin">
+                    ${generarOpcionesHoras(h ? h.hora_fin : null, '13:00')}
+                </select>
             </div>
             <div class="col-md-2">
                 <label class="form-label small fw-semibold">Duración (min)</label>
