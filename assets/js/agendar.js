@@ -42,11 +42,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (searchOs) {
         searchOs.addEventListener('input', function(e) {
             const term = e.target.value.toLowerCase();
-            const btns = document.querySelectorAll('#wizard-os-container .pill-btn');
+            const btns = document.querySelectorAll('#wizard-os-container .os-card, #wizard-os-container .pill-btn');
             btns.forEach(btn => {
                 if (btn.textContent.toLowerCase().includes(term)) {
                     btn.classList.remove('d-none');
+                    btn.classList.add('d-flex'); // since os-card uses d-flex
                 } else {
+                    btn.classList.remove('d-flex');
                     btn.classList.add('d-none');
                 }
             });
@@ -58,11 +60,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (searchPlan) {
         searchPlan.addEventListener('input', function(e) {
             const term = e.target.value.toLowerCase();
-            const btns = document.querySelectorAll('#wizard-planes-container .pill-btn');
+            const btns = document.querySelectorAll('#wizard-planes-container .plan-card, #wizard-planes-container .pill-btn');
             btns.forEach(btn => {
                 if (btn.textContent.toLowerCase().includes(term)) {
                     btn.classList.remove('d-none');
+                    btn.classList.add('d-flex');
                 } else {
+                    btn.classList.remove('d-flex');
                     btn.classList.add('d-none');
                 }
             });
@@ -100,6 +104,65 @@ function iniciarWizardReserva(medicoId) {
         });
 }
 
+// Global to store grouped coverage plans
+let groupedObrasSociales = {};
+
+function agruparObrasSociales(lista) {
+    const knownPrefixes = [
+        "Swiss Medical Group", "Swiss Medical", 
+        "OSDE", "Galeno", "Sancor Salud", "Sancor", 
+        "Medife", "OMINT", "O.S.D.E.", "Accord Salud", 
+        "IOMA", "PAMI", "ACA Salud", "Aca Salud", "OSECAC", "Jerarquicos Salud",
+        "Luis Pasteur", "Medicus", "Prevencion Salud", "Bristol Medicine"
+    ];
+    
+    let grupos = {};
+    let resultado = [];
+    
+    lista.forEach(os => {
+        let matchedPrefix = null;
+        for (let prefix of knownPrefixes) {
+            if (os.nombre.toLowerCase().startsWith(prefix.toLowerCase())) {
+                matchedPrefix = prefix;
+                break;
+            }
+        }
+        
+        if (matchedPrefix) {
+            if (!grupos[matchedPrefix]) {
+                grupos[matchedPrefix] = {
+                    id: 'group_' + matchedPrefix,
+                    nombre: matchedPrefix,
+                    isGroup: true,
+                    children: []
+                };
+                resultado.push(grupos[matchedPrefix]);
+            }
+            // Add as child
+            let planName = os.nombre.substring(matchedPrefix.length).trim();
+            if (planName.startsWith('-')) planName = planName.substring(1).trim();
+            if (planName === '') planName = 'Plan General';
+            
+            grupos[matchedPrefix].children.push({
+                id: os.id || os.obra_social_id,
+                nombre: planName,
+                fullName: os.nombre
+            });
+        } else {
+            resultado.push({
+                id: os.id || os.obra_social_id,
+                nombre: os.nombre,
+                isGroup: false,
+                children: []
+            });
+        }
+    });
+    
+    // Sort
+    resultado.sort((a, b) => a.nombre.localeCompare(b.nombre));
+    return resultado;
+}
+
 // Para usar desde los botones HTML
 window.wizardGoToStep2 = function() {
     document.getElementById('wizard-step-1').classList.add('d-none');
@@ -116,9 +179,58 @@ window.wizardCargarObrasSociales = function() {
         .then(res => res.json())
         .then(data => {
             container.innerHTML = '';
+            
+            const renderGroupedObras = (lista, esFallback) => {
+                const agrupadas = agruparObrasSociales(lista);
+                groupedObrasSociales = {}; // Reset global map
+                
+                agrupadas.forEach(os => {
+                    if (os.isGroup) {
+                        groupedObrasSociales[os.id] = os.children;
+                    }
+                    const btn = document.createElement('button');
+                    // Usar nuevo estilo visual
+                    btn.className = 'os-card btn btn-light shadow-sm d-flex flex-column justify-content-center align-items-center p-3 text-center';
+                    btn.style.width = '180px';
+                    btn.style.height = '120px';
+                    btn.style.borderRadius = '12px';
+                    btn.style.border = '1px solid rgba(0,0,0,0.05)';
+                    btn.style.transition = 'all 0.3s ease';
+                    
+                    btn.innerHTML = `<span class="fw-semibold text-primary mb-2">${os.nombre}</span>
+                                     <small class="text-muted" style="font-size: 0.75rem;">
+                                       ${os.isGroup ? os.children.length + ' planes' : 'Seleccionar'}
+                                     </small>`;
+                                     
+                    btn.onmouseover = () => {
+                        btn.classList.remove('btn-light');
+                        btn.classList.add('btn-primary', 'text-white');
+                        btn.querySelector('span').classList.remove('text-primary');
+                        btn.querySelector('span').classList.add('text-white');
+                        btn.querySelector('small').classList.remove('text-muted');
+                        btn.querySelector('small').classList.add('text-white-50');
+                        btn.style.transform = 'translateY(-3px)';
+                        btn.style.boxShadow = '0 10px 20px rgba(13, 110, 253, 0.2)';
+                    };
+                    btn.onmouseout = () => {
+                        btn.classList.add('btn-light');
+                        btn.classList.remove('btn-primary', 'text-white');
+                        btn.querySelector('span').classList.add('text-primary');
+                        btn.querySelector('span').classList.remove('text-white');
+                        btn.querySelector('small').classList.add('text-muted');
+                        btn.querySelector('small').classList.remove('text-white-50');
+                        btn.style.transform = 'translateY(0)';
+                        btn.style.boxShadow = 'none';
+                    };
+                    
+                    // Fix ID mapping when rendering specific items
+                    const actualId = esFallback ? os.id : (os.obra_social_id || os.id);
+                    btn.onclick = () => wizardSelectCobertura(actualId, os.nombre, os.isGroup);
+                    container.appendChild(btn);
+                });
+            };
+
             if(!data[0].obras_sociales || data[0].obras_sociales.length === 0) {
-                // Si el médico no tiene obras sociales asignadas, cargamos TODAS por defecto
-                // para que el circuito pueda continuar y no se tranque.
                 fetch('backend/api/crud_obras_sociales.php')
                     .then(res => res.json())
                     .then(todas => {
@@ -126,25 +238,12 @@ window.wizardCargarObrasSociales = function() {
                             container.innerHTML = '<span class="text-muted">No hay obras sociales cargadas en el sistema.</span>';
                             return;
                         }
-                        todas.forEach(os => {
-                            const btn = document.createElement('button');
-                            btn.className = 'pill-btn px-4 py-2';
-                            btn.textContent = os.nombre;
-                            btn.onclick = () => wizardSelectCobertura(os.id, os.nombre);
-                            container.appendChild(btn);
-                        });
+                        renderGroupedObras(todas, true);
                     });
                 return;
             }
             
-            // Si el médico SÍ tiene obras sociales específicas asignadas, mostrar esas:
-            data[0].obras_sociales.forEach(os => {
-                const btn = document.createElement('button');
-                btn.className = 'pill-btn px-4 py-2';
-                btn.textContent = os.nombre;
-                btn.onclick = () => wizardSelectCobertura(os.obra_social_id, os.nombre);
-                container.appendChild(btn);
-            });
+            renderGroupedObras(data[0].obras_sociales, false);
         })
         .catch(err => {
             console.error("Error cargando coberturas", err);
@@ -152,9 +251,10 @@ window.wizardCargarObrasSociales = function() {
         });
 };
 
-window.wizardSelectCobertura = function(id, nombre) {
+window.wizardSelectCobertura = function(id, nombre, isGroup = false) {
     wizardData.coberturaId = id;
     wizardData.coberturaNombre = nombre;
+    wizardData.isGroup = isGroup;
     
     // Actualizar barra superior
     document.getElementById('wizard-cobertura-nombre').textContent = nombre;
@@ -179,28 +279,42 @@ window.wizardCargarPlanes = function(osId) {
     const searchPlan = document.getElementById('wizard-search-plan');
     if(searchPlan) searchPlan.value = '';
     
+    const renderPlanes = (planesArray) => {
+        container.innerHTML = '';
+        if(!planesArray || planesArray.length === 0) {
+            document.getElementById('wizard-step-3').classList.add('d-none');
+            wizardGoToStep4();
+            return;
+        }
+        planesArray.forEach(plan => {
+            const btn = document.createElement('button');
+            btn.className = 'plan-card btn btn-outline-primary px-4 py-3 m-2 d-flex align-items-center justify-content-center fw-semibold';
+            btn.style.borderRadius = '50px';
+            btn.style.minWidth = '200px';
+            btn.textContent = plan.nombre;
+            btn.onclick = () => {
+                wizardData.planId = plan.id;
+                // Si es del grupo extraído, el nombre puede ser corto. Usamos plan.nombre
+                wizardData.planNombre = plan.nombre;
+                document.getElementById('wizard-cobertura-nombre').textContent = `${wizardData.coberturaNombre} - ${plan.nombre}`;
+                document.getElementById('wizard-step-3').classList.add('d-none');
+                wizardGoToStep4();
+            };
+            container.appendChild(btn);
+        });
+    };
+
+    // Si osId es un grupo virtual generado por nuestro JS
+    if (wizardData.isGroup && groupedObrasSociales[osId]) {
+        renderPlanes(groupedObrasSociales[osId]);
+        return;
+    }
+
+    // Si no es un grupo virtual, usamos la tabla real de planes_obras_sociales
     fetch(`backend/api/get_planes.php?obra_social_id=${osId}`)
         .then(res => res.json())
         .then(data => {
-            container.innerHTML = '';
-            if(!data || data.length === 0) {
-                document.getElementById('wizard-step-3').classList.add('d-none');
-                wizardGoToStep4();
-                return;
-            }
-            data.forEach(plan => {
-                const btn = document.createElement('button');
-                btn.className = 'pill-btn px-4 py-2';
-                btn.textContent = plan.nombre;
-                btn.onclick = () => {
-                    wizardData.planId = plan.id;
-                    wizardData.planNombre = plan.nombre;
-                    document.getElementById('wizard-cobertura-nombre').textContent = `${wizardData.coberturaNombre} - ${plan.nombre}`;
-                    document.getElementById('wizard-step-3').classList.add('d-none');
-                    wizardGoToStep4();
-                };
-                container.appendChild(btn);
-            });
+            renderPlanes(data);
         })
         .catch(err => {
             console.error("Error cargando planes", err);
@@ -235,15 +349,28 @@ window.wizardRenderCalendarioMock = function() {
         let cupos = Math.floor(Math.random() * 10) + 1;
         
         const btn = document.createElement('button');
-        btn.className = 'calendar-pill text-center';
+        btn.className = 'btn btn-outline-primary m-2 d-flex flex-column align-items-center justify-content-center shadow-sm';
+        btn.style.width = '110px';
+        btn.style.height = '110px';
+        btn.style.borderRadius = '20px';
+        btn.style.transition = 'all 0.3s ease';
+        
         btn.innerHTML = `
-            <div class="fw-bold">${diaNombre.toUpperCase()} ${diaNumero}</div>
-            <div class="pill-slots">(${cupos} horarios)</div>
+            <span class="text-uppercase fw-bold text-muted mb-1" style="font-size:0.8rem">${diaNombre}</span>
+            <span class="fs-2 fw-bolder mb-1">${diaNumero}</span>
+            <small class="text-muted" style="font-size:0.7rem">${cupos} turnos</small>
         `;
         
         btn.onclick = () => {
-            document.querySelectorAll('#wizard-dias-container .calendar-pill').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+            document.querySelectorAll('#wizard-dias-container .btn').forEach(b => {
+                b.classList.remove('btn-primary', 'text-white');
+                b.classList.add('btn-outline-primary');
+                b.querySelectorAll('.text-muted').forEach(el => el.classList.remove('text-white-50'));
+            });
+            btn.classList.remove('btn-outline-primary');
+            btn.classList.add('btn-primary', 'text-white');
+            btn.querySelectorAll('.text-muted').forEach(el => el.classList.add('text-white-50'));
+            
             wizardData.fecha = d.toISOString().split('T')[0];
             wizardShowHorarios(cupos);
         };
@@ -268,11 +395,12 @@ window.wizardShowHorarios = function(cupos) {
         let timeStr = `${hr.toString().padStart(2, '0')}:${min}`;
         
         const btn = document.createElement('button');
-        btn.className = 'pill-btn px-4 py-2';
+        btn.className = 'btn btn-outline-primary px-4 py-2 fw-bold shadow-sm';
+        btn.style.borderRadius = '50px';
         btn.textContent = timeStr;
         btn.onclick = () => {
-            document.querySelectorAll('#wizard-horarios-list .pill-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+            document.querySelectorAll('#wizard-horarios-list .btn').forEach(b => b.classList.remove('active', 'btn-primary', 'text-white'));
+            btn.classList.add('active', 'btn-primary', 'text-white');
             wizardData.hora = timeStr;
             btnConfirmar.classList.remove('d-none');
         };

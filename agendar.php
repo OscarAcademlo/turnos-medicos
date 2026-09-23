@@ -87,30 +87,32 @@
                 <!-- Wizard Paso 2: Cobertura -->
                 <div id="wizard-step-2" class="text-center py-4 d-none animate__animated animate__fadeIn">
                     <h2 class="fw-light mb-4">¿Será de forma particular?</h2>
-                    <button class="pill-btn fs-5 px-5 py-2 mb-5" onclick="wizardSelectCobertura('particular', 'Particular')">
-                        Sin obra social / Particular
+                    <button class="btn btn-outline-primary rounded-pill fs-5 px-5 py-3 mb-5 fw-semibold shadow-sm" onclick="wizardSelectCobertura('particular', 'Particular')">
+                        <i class="bi bi-person-heart me-2"></i> Sin obra social / Particular
                     </button>
                     
-                    <div class="glass-card p-4 p-md-5 mx-auto text-center" style="max-width: 800px;">
-                        <h4 class="text-muted mb-4">¿O qué cobertura médica tienes?</h4>
-                        <div class="mb-4">
-                            <input type="text" id="wizard-search-os" class="form-control form-control-lg text-center rounded-pill shadow-sm border-0" placeholder="Busca tu cobertura médica...">
+                    <div class="glass-card p-4 p-md-5 mx-auto text-center shadow-lg" style="max-width: 800px; border-radius: 20px;">
+                        <h4 class="text-muted mb-4 fw-normal">¿O qué cobertura médica tienes?</h4>
+                        <div class="mb-5 position-relative mx-auto" style="max-width: 500px;">
+                            <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-4 text-muted fs-5"></i>
+                            <input type="text" id="wizard-search-os" class="form-control form-control-lg rounded-pill shadow-sm border-0 bg-light py-3 ps-5" placeholder="Buscar cobertura...">
                         </div>
-                        <div id="wizard-os-container" class="d-flex flex-wrap gap-2 justify-content-center mt-4">
-                            <!-- OS Pills -->
+                        <div id="wizard-os-container" class="d-flex flex-wrap gap-3 justify-content-center mt-4">
+                            <!-- OS Cards -->
                         </div>
                     </div>
                 </div>
 
                 <!-- Wizard Paso 3: Planes -->
                 <div id="wizard-step-3" class="text-center py-4 d-none animate__animated animate__fadeIn">
-                    <div class="glass-card p-4 p-md-5 mx-auto text-center" style="max-width: 800px;">
-                        <h2 class="fw-light mb-4">¿Qué plan tienes?</h2>
-                        <div class="mb-4">
-                            <input type="text" id="wizard-search-plan" class="form-control form-control-lg text-center rounded-pill shadow-sm border-0" placeholder="Busca tu plan...">
+                    <div class="glass-card p-4 p-md-5 mx-auto text-center shadow-lg" style="max-width: 800px; border-radius: 20px;">
+                        <h2 class="fw-light mb-4 text-primary">¿Qué plan tienes?</h2>
+                        <div class="mb-5 position-relative mx-auto" style="max-width: 500px;">
+                            <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-4 text-muted fs-5"></i>
+                            <input type="text" id="wizard-search-plan" class="form-control form-control-lg rounded-pill shadow-sm border-0 bg-light py-3 ps-5" placeholder="Buscar plan...">
                         </div>
-                        <div id="wizard-planes-container" class="d-flex flex-wrap gap-2 justify-content-center mt-4">
-                            <!-- Planes Pills -->
+                        <div id="wizard-planes-container" class="d-flex flex-wrap gap-3 justify-content-center mt-4">
+                            <!-- Planes Cards -->
                         </div>
                     </div>
                 </div>
