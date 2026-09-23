@@ -199,3 +199,26 @@ body {
   font-size: 0.8rem;
   opacity: 0.9;
 }
+
+/* Wizard Full Page Styles */
+.wizard-big-btn {
+  border: 2px solid #198754;
+  border-radius: 50px;
+  padding: 20px 40px;
+  background-color: transparent;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 250px;
+}
+.wizard-big-btn:hover {
+  background-color: rgba(25, 135, 84, 0.05) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(25, 135, 84, 0.15);
+}
+[data-bs-theme="dark"] .wizard-big-btn {
+  border-color: #75b798;
+  background-color: transparent !important;
+}
+[data-bs-theme="dark"] .wizard-big-btn:hover {
+  background-color: rgba(117, 183, 152, 0.1) !important;
+}
