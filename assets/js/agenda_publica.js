@@ -119,14 +119,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Función para el botón Agendar
 window.agendarTurno = function(medicoId) {
-    const userJson = localStorage.getItem('user');
-    if (!userJson) {
-        // Redirigir a login si no hay sesión
-        window.location.href = 'login.php?redirect=agendar&medico_id=' + medicoId;
-    } else {
-        // Redirigir al dashboard
-        window.location.href = 'dashboard.php?agendar_medico_id=' + medicoId;
-    }
+    // Redirigir al Asistente Público
+    window.location.href = 'agendar.php?medico_id=' + medicoId;
 };
 
 // Utils: Debounce

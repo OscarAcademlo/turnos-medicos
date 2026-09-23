@@ -41,6 +41,12 @@ try {
         $q_medicos .= " AND u.id IN (SELECT usuario_id FROM medicos_obras_sociales WHERE obra_social_id = :os_id) ";
         $params[':os_id'] = $search_obra_social;
     }
+    
+    $search_medico = isset($_GET['medico_id']) ? intval($_GET['medico_id']) : 0;
+    if ($search_medico > 0) {
+        $q_medicos .= " AND u.id = :medico_id ";
+        $params[':medico_id'] = $search_medico;
+    }
 
     $q_medicos .= " ORDER BY u.apellido ASC, u.nombre ASC";
 

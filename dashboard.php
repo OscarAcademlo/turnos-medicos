@@ -91,6 +91,7 @@
         <main class="col-md-9 ms-sm-auto col-lg-10 px-3 px-md-4 py-4">
             
             <!-- VISTA: INICIO / DASHBOARD -->
+            <!-- VISTA: INICIO / DASHBOARD -->
             <div id="content-dashboard">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-3 mb-4 border-bottom">
                     <h1 class="h2 fw-bold">Resumen General</h1>
@@ -212,106 +213,7 @@
                     <div>Todavía no tienes turnos programados. Haz clic en "Solicitar Turno" para agendar uno.</div>
                 </div>
             </div>
-            <!-- VISTA: ASISTENTE DE RESERVA PANTALLA COMPLETA -->
-            <div id="content-wizard-agendar" class="d-none animate__animated animate__fadeIn">
-                <!-- Barra de Resumen (Sticky) -->
-                <div class="glass-card p-3 mb-5 sticky-top mt-3" style="z-index: 1020; top: 1rem;">
-                    <div class="row align-items-center">
-                        <div class="col-md-4 d-flex align-items-center mb-3 mb-md-0">
-                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3 shadow-sm" style="width: 45px; height: 45px;">
-                                <i class="bi bi-person-fill fs-4"></i>
-                            </div>
-                            <div>
-                                <h6 class="mb-0 fw-bold" id="wizard-medico-nombre">Cargando...</h6>
-                                <small class="text-primary" style="cursor:pointer;" id="btn-cambiar-profesional">Cambiar profesional</small>
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3 mb-md-0 border-start ps-4">
-                            <h6 class="text-muted small text-uppercase mb-1">Especialidad</h6>
-                            <span id="wizard-especialidad-nombre" class="fw-semibold">Cargando...</span>
-                        </div>
-                        <div class="col-md-4 border-start ps-4">
-                            <h6 class="text-muted small text-uppercase mb-1">Cobertura Médica</h6>
-                            <span id="wizard-cobertura-nombre" class="fw-semibold text-muted">Seleccionar...</span>
-                            <br><small class="text-primary d-none" style="cursor:pointer;" id="btn-cambiar-cobertura">Cambiar cobertura</small>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Contenedor Principal del Wizard -->
-                <div class="container pb-5">
-                    
-                    <!-- Wizard Paso 1: Tipo de Paciente -->
-                    <div id="wizard-step-1" class="text-center py-4">
-                        <h2 class="fw-light mb-5">¿Ya te has atendido con <span id="wizard-medico-nombre-q">este profesional</span>?</h2>
-                        <div class="d-flex flex-column flex-md-row justify-content-center gap-4">
-                            <button class="wizard-big-btn bg-white" onclick="wizardGoToStep2()">
-                                <span class="d-block fs-4 text-primary mb-2">Es la primera vez</span>
-                                <small class="text-muted">(será mi primer visita)</small>
-                            </button>
-                            <button class="wizard-big-btn bg-white" onclick="wizardGoToStep2()">
-                                <span class="d-block fs-4 text-primary mb-2">Ya me he atendido</span>
-                                <small class="text-muted">(soy un paciente recurrente)</small>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Wizard Paso 2: Cobertura -->
-                    <div id="wizard-step-2" class="text-center py-4 d-none animate__animated animate__fadeIn">
-                        <h2 class="fw-light mb-4">¿Será de forma particular?</h2>
-                        <button class="pill-btn fs-5 px-5 py-2 mb-5" onclick="wizardSelectCobertura('particular', 'Particular')">
-                            Sin obra social / Particular
-                        </button>
-                        
-                        <div class="glass-card p-4 p-md-5 mx-auto text-center" style="max-width: 800px;">
-                            <h4 class="text-muted mb-4">¿O qué cobertura médica tienes?</h4>
-                            <div class="mb-4">
-                                <input type="text" id="wizard-search-os" class="form-control form-control-lg text-center rounded-pill shadow-sm border-0" placeholder="Busca tu cobertura médica...">
-                            </div>
-                            <div id="wizard-os-container" class="d-flex flex-wrap gap-2 justify-content-center mt-4">
-                                <!-- OS Pills -->
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Wizard Paso 3: Planes -->
-                    <div id="wizard-step-3" class="text-center py-4 d-none animate__animated animate__fadeIn">
-                        <div class="glass-card p-4 p-md-5 mx-auto text-center" style="max-width: 800px;">
-                            <h2 class="fw-light mb-4">¿Qué plan tienes?</h2>
-                            <div class="mb-4">
-                                <input type="text" id="wizard-search-plan" class="form-control form-control-lg text-center rounded-pill shadow-sm border-0" placeholder="Busca tu plan...">
-                            </div>
-                            <div id="wizard-planes-container" class="d-flex flex-wrap gap-2 justify-content-center mt-4">
-                                <!-- Planes Pills -->
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Wizard Paso 4: Calendario -->
-                    <div id="wizard-step-4" class="py-4 d-none animate__animated animate__fadeIn">
-                        <h2 class="text-center fw-light mb-5">¿Qué día prefieres?</h2>
-                        <div id="wizard-mes-label" class="text-center text-muted fw-bold mb-4 fs-4 text-uppercase">Octubre</div>
-                        <div id="wizard-dias-container" class="d-flex flex-wrap gap-3 justify-content-center mb-5" style="max-width: 900px; margin: 0 auto;">
-                            <!-- Días Pills -->
-                        </div>
-                        
-                        <!-- Horarios -->
-                        <div id="wizard-horarios-container" class="d-none text-center">
-                            <hr class="w-50 mx-auto my-5 text-muted opacity-25">
-                            <h4 class="fw-light text-muted mb-4">Horarios disponibles</h4>
-                            <div id="wizard-horarios-list" class="d-flex flex-wrap gap-2 justify-content-center mx-auto" style="max-width: 700px;">
-                                <!-- Horas Pills -->
-                            </div>
-                            <div class="mt-5">
-                                <button class="btn btn-primary rounded-pill px-5 py-3 fs-5 fw-bold shadow d-none" id="wizard-btn-confirmar">
-                                    <i class="bi bi-check-circle me-2"></i> Confirmar Turno
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
 
         </main>
     </div>
