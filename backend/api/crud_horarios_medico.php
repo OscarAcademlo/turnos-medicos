@@ -17,6 +17,24 @@ $database = new Database();
 $db = $database->getConnection();
 $method = $_SERVER['REQUEST_METHOD'];
 
+// Auto-healing: asegurarse de que unidades_atencion existe y que horarios_medicos tiene unidad_id
+try {
+    $db->exec("CREATE TABLE IF NOT EXISTS unidades_atencion (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nombre VARCHAR(150) NOT NULL,
+        calle VARCHAR(150) NULL,
+        numero VARCHAR(20) NULL,
+        localidad VARCHAR(100) NULL,
+        activa TINYINT(1) DEFAULT 1,
+        creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )");
+    // Agregar columna unidad_id si no existe
+    $cols = $db->query("SHOW COLUMNS FROM horarios_medicos LIKE 'unidad_id'")->fetchAll();
+    if(empty($cols)) {
+        $db->exec("ALTER TABLE horarios_medicos ADD COLUMN unidad_id INT NULL");
+    }
+} catch(Exception $e) { /* silencioso */ }
+
 switch($method) {
     case 'GET':
         $medico_id = $_GET['medico_id'] ?? null;

@@ -19,6 +19,18 @@ if ($method !== 'GET') {
 
 $database = new Database();
 $db = $database->getConnection();
+
+// Auto-healing: crear tabla si no existe
+$db->exec("CREATE TABLE IF NOT EXISTS unidades_atencion (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(150) NOT NULL,
+    calle VARCHAR(150) NULL,
+    numero VARCHAR(20) NULL,
+    localidad VARCHAR(100) NULL,
+    activa TINYINT(1) DEFAULT 1,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)");
+
 $data = json_decode(file_get_contents("php://input"));
 
 switch($method) {
