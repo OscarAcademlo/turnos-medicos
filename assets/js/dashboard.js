@@ -74,13 +74,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const menuUsuarios = document.getElementById('menu-usuarios');
     const menuObras = document.getElementById('menu-obras');
     const menuAgendaAdmin = document.getElementById('menu-agenda-admin');
+    const menuMedicos = document.getElementById('menu-medicos');
     const menuTurnos = document.getElementById('menu-turnos');
+    const menuConfiguracion = document.getElementById('menu-configuracion');
     
     const contentDashboard = document.getElementById('content-dashboard');
     const contentUsuarios = document.getElementById('content-usuarios');
     const contentObras = document.getElementById('content-obras');
     const contentAgendaAdmin = document.getElementById('content-agenda-admin');
+    const contentMedicos = document.getElementById('content-medicos');
     const contentTurnos = document.getElementById('content-turnos');
+    const contentConfiguracion = document.getElementById('content-configuracion');
 
     // Función auxiliar para cambiar vistas
     function mostrarVista(vistaActiva, menuActivo, titulo) {
@@ -91,7 +95,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if(contentUsuarios) contentUsuarios.classList.add('d-none');
         if(contentObras) contentObras.classList.add('d-none');
         if(contentAgendaAdmin) contentAgendaAdmin.classList.add('d-none');
+        if(contentMedicos) contentMedicos.classList.add('d-none');
         if(contentTurnos) contentTurnos.classList.add('d-none');
+        if(contentConfiguracion) contentConfiguracion.classList.add('d-none');
         
         if(vistaActiva) vistaActiva.classList.remove('d-none');
         document.getElementById('page-title').textContent = titulo || 'Clínica Médica';
@@ -123,6 +129,22 @@ document.addEventListener('DOMContentLoaded', () => {
         menuAgendaAdmin.addEventListener('click', (e) => {
             e.preventDefault();
             mostrarVista(contentAgendaAdmin, menuAgendaAdmin, 'Agenda y Horarios');
+        });
+    }
+
+    if(menuMedicos) {
+        menuMedicos.addEventListener('click', (e) => {
+            e.preventDefault();
+            mostrarVista(contentMedicos, menuMedicos, 'Gestión de Médicos');
+            cargarMedicosAdmin();
+        });
+    }
+
+    if(menuConfiguracion) {
+        menuConfiguracion.addEventListener('click', (e) => {
+            e.preventDefault();
+            mostrarVista(contentConfiguracion, menuConfiguracion, 'Configuración del Sistema');
+            cargarConfiguracion();
         });
     }
 
@@ -674,5 +696,247 @@ function eliminarPlan(id) {
     })
     .catch(() => alert('Error de conexión'));
 }
+
+// ==========================================
+// CONFIGURACIÓN
+// ==========================================
+function cargarConfiguracion() {
+    fetch('backend/api/config.php')
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('config-meses').value = data.meses_agenda || 3;
+        })
+        .catch(err => console.error("Error cargando config", err));
+}
+
+document.getElementById('form-configuracion').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const btn = this.querySelector('button[type="submit"]');
+    const meses = document.getElementById('config-meses').value;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...';
+    
+    fetch('backend/api/config.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ meses_agenda: meses })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+    })
+    .catch(() => alert('Error de conexión'))
+    .finally(() => {
+        btn.disabled = false;
+        btn.textContent = 'Guardar Configuración';
+    });
+});
+
+// ==========================================
+// CRUD MÉDICOS
+// ==========================================
+let medicosDisponibles = [];
+let obrasSocialesDisponibles = [];
+
+function cargarMedicosAdmin() {
+    const container = document.getElementById('medicos-container');
+    container.innerHTML = `
+        <div class="col-12 text-center text-muted py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2">Cargando médicos...</p>
+        </div>
+    `;
+
+    // Cargar médicos y paralelamente cargar Obras Sociales para el modal de coberturas
+    Promise.all([
+        fetch('backend/api/admin_get_medicos.php').then(res => res.json()),
+        fetch('backend/api/get_obras_sociales.php').then(res => res.json())
+    ]).then(([medicos, obras]) => {
+        medicosDisponibles = medicos;
+        obrasSocialesDisponibles = obras;
+        
+        container.innerHTML = '';
+        if(medicos.length === 0) {
+            container.innerHTML = '<div class="col-12"><div class="alert alert-info">No hay médicos registrados.</div></div>';
+            return;
+        }
+
+        medicos.forEach(med => {
+            const foto = med.foto_perfil || 'assets/images/default-avatar.png';
+            const html = `
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden position-relative">
+                        <div class="card-body p-4 text-center">
+                            <img src="${foto}" class="rounded-circle mb-3 object-fit-cover" width="100" height="100" style="border: 3px solid #e9ecef;">
+                            <h5 class="fw-bold mb-1">Dr/a. ${med.nombre} ${med.apellido}</h5>
+                            <p class="text-muted small mb-3">Matrícula: ${med.matricula || 'No especificada'}</p>
+                            
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-outline-primary btn-sm rounded-pill" onclick="abrirEditMedico(${med.id})">
+                                    <i class="bi bi-pencil-square me-1"></i> Editar Perfil
+                                </button>
+                                <button class="btn btn-outline-success btn-sm rounded-pill" onclick="abrirCoberturasMedico(${med.id})">
+                                    <i class="bi bi-shield-check me-1"></i> Coberturas (${med.planes ? med.planes.length : 0})
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.innerHTML += html;
+        });
+    }).catch(err => {
+        container.innerHTML = '<div class="col-12"><div class="alert alert-danger">Error cargando datos.</div></div>';
+    });
+}
+
+function abrirEditMedico(id) {
+    const med = medicosDisponibles.find(m => m.id == id);
+    if(!med) return;
+    
+    document.getElementById('edit-medico-id').value = med.id;
+    document.getElementById('edit-medico-matricula').value = med.matricula || '';
+    document.getElementById('edit-medico-direccion').value = med.direccion || '';
+    document.getElementById('edit-medico-biografia').value = med.biografia || '';
+    document.getElementById('edit-medico-foto-preview').src = med.foto_perfil || 'assets/images/default-avatar.png';
+    document.getElementById('edit-medico-foto').value = '';
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalEditMedico'));
+    modal.show();
+}
+
+// Subida de imagen
+document.getElementById('edit-medico-foto').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if(!file) return;
+    
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    fetch('backend/api/upload_image.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.url) {
+            document.getElementById('edit-medico-foto-preview').src = data.url;
+        } else {
+            alert(data.message || 'Error al subir imagen');
+        }
+    })
+    .catch(() => alert('Error de conexión al subir imagen'));
+});
+
+// Guardar Perfil Médico
+document.getElementById('form-edit-medico').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const btn = this.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    
+    const payload = {
+        id: document.getElementById('edit-medico-id').value,
+        matricula: document.getElementById('edit-medico-matricula').value,
+        direccion: document.getElementById('edit-medico-direccion').value,
+        biografia: document.getElementById('edit-medico-biografia').value,
+        foto_perfil: document.getElementById('edit-medico-foto-preview').getAttribute('src')
+    };
+    
+    // Si la imagen es la por defecto, no guardar la url absoluta de default
+    if(payload.foto_perfil.includes('default-avatar')) {
+        payload.foto_perfil = null;
+    }
+    
+    fetch('backend/api/admin_update_medico.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        bootstrap.Modal.getInstance(document.getElementById('modalEditMedico')).hide();
+        cargarMedicosAdmin();
+    })
+    .catch(() => alert('Error de conexión'))
+    .finally(() => btn.disabled = false);
+});
+
+// Modal de Coberturas
+function abrirCoberturasMedico(id) {
+    const med = medicosDisponibles.find(m => m.id == id);
+    if(!med) return;
+    
+    document.getElementById('coberturas-medico-id').value = med.id;
+    const container = document.getElementById('coberturas-list-container');
+    container.innerHTML = '<div class="text-center"><div class="spinner-border text-primary spinner-border-sm"></div></div>';
+    
+    // Obtener los planes marcados previamente por este medico
+    const planesMed = med.planes || [];
+    
+    // Armar UI agrupada por OS
+    let html = '';
+    obrasSocialesDisponibles.forEach(os => {
+        html += `
+            <div class="card mb-3 border-0 shadow-sm">
+                <div class="card-header bg-light border-0 fw-bold">
+                    ${os.nombre}
+                </div>
+                <div class="card-body py-2">
+        `;
+        
+        if(!os.planes || os.planes.length === 0) {
+            html += `<p class="text-muted small mb-0">No hay planes registrados. Se asume plan único.</p>`;
+        } else {
+            os.planes.forEach(plan => {
+                const checked = planesMed.includes(plan.id) ? 'checked' : '';
+                html += `
+                    <div class="form-check">
+                        <input class="form-check-input check-plan-medico" type="checkbox" value="${plan.id}" id="plan-${plan.id}" ${checked}>
+                        <label class="form-check-label" for="plan-${plan.id}">
+                            ${plan.nombre}
+                        </label>
+                    </div>
+                `;
+            });
+        }
+        
+        html += `</div></div>`;
+    });
+    
+    container.innerHTML = html;
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalCoberturasMedico'));
+    modal.show();
+}
+
+// Guardar Coberturas
+document.getElementById('form-coberturas-medico').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const btn = this.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    
+    const usuarioId = document.getElementById('coberturas-medico-id').value;
+    const checkboxes = document.querySelectorAll('.check-plan-medico:checked');
+    const planesSeleccionados = Array.from(checkboxes).map(cb => parseInt(cb.value));
+    
+    fetch('backend/api/admin_update_medico_coberturas.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            usuario_id: usuarioId,
+            planes: planesSeleccionados
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        bootstrap.Modal.getInstance(document.getElementById('modalCoberturasMedico')).hide();
+        cargarMedicosAdmin();
+    })
+    .catch(() => alert('Error de conexión'))
+    .finally(() => btn.disabled = false);
+});
 
 

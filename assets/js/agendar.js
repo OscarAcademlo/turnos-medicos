@@ -330,57 +330,90 @@ window.wizardGoToStep4 = function() {
 
 window.wizardRenderCalendarioMock = function() {
     const container = document.getElementById('wizard-dias-container');
-    container.innerHTML = '';
+    container.innerHTML = `
+        <div class="col-12 text-center text-muted py-3">
+            <div class="spinner-border text-primary spinner-border-sm" role="status"></div>
+            <span class="ms-2">Cargando agenda...</span>
+        </div>
+    `;
     
-    const hoy = new Date();
-    const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-    const mesNombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-    
-    document.getElementById('wizard-mes-label').textContent = mesNombres[hoy.getMonth()];
+    // Ocultar el título del mes antiguo porque ahora pondremos un título por cada bloque
+    const mesLabel = document.getElementById('wizard-mes-label');
+    if (mesLabel) mesLabel.style.display = 'none';
 
-    // Generate up to 90 days (3 months)
-    for(let i=1; i<=90; i++) {
-        let d = new Date(hoy);
-        d.setDate(hoy.getDate() + i);
-        
-        if(d.getDay() === 0) continue; // Skip Sundays
-        
-        let diaNombre = dias[d.getDay()];
-        let diaNumero = d.getDate();
-        let cupos = Math.floor(Math.random() * 10) + 1;
-        
-        const btn = document.createElement('button');
-        btn.className = 'btn btn-outline-primary m-2 d-flex flex-column align-items-center justify-content-center shadow-sm';
-        btn.style.width = '110px';
-        btn.style.height = '110px';
-        btn.style.borderRadius = '20px';
-        btn.style.transition = 'all 0.3s ease';
-        
-        btn.innerHTML = `
-            <span class="text-uppercase fw-bold text-muted mb-1" style="font-size:0.8rem">${diaNombre}</span>
-            <span class="fs-2 fw-bolder mb-1">${diaNumero}</span>
-            <small class="text-muted" style="font-size:0.7rem">${cupos} turnos</small>
-        `;
-        
-        btn.onclick = () => {
-            // Actualizar etiqueta del mes basado en la selección
-            document.getElementById('wizard-mes-label').textContent = mesNombres[d.getMonth()] + (d.getFullYear() !== hoy.getFullYear() ? ' ' + d.getFullYear() : '');
-
-            document.querySelectorAll('#wizard-dias-container .btn').forEach(b => {
-                b.classList.remove('btn-primary', 'text-white');
-                b.classList.add('btn-outline-primary');
-                b.querySelectorAll('.text-muted').forEach(el => el.classList.remove('text-white-50'));
-            });
-            btn.classList.remove('btn-outline-primary');
-            btn.classList.add('btn-primary', 'text-white');
-            btn.querySelectorAll('.text-muted').forEach(el => el.classList.add('text-white-50'));
+    fetch('backend/api/config.php')
+        .then(res => res.json())
+        .then(config => {
+            const mesesAgenda = parseInt(config.meses_agenda) || 3;
+            const diasTotales = mesesAgenda * 30; // approx
+            container.innerHTML = '';
             
-            wizardData.fecha = d.toISOString().split('T')[0];
-            wizardShowHorarios(cupos);
-        };
-        
-        container.appendChild(btn);
-    }
+            const hoy = new Date();
+            const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+            const mesNombres = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
+            
+            let currentMonth = -1;
+            let monthContainer = null;
+
+            for(let i=1; i<=diasTotales; i++) {
+                let d = new Date(hoy);
+                d.setDate(hoy.getDate() + i);
+                
+                if(d.getDay() === 0) continue; // Skip Sundays
+                
+                // Si cambiamos de mes, creamos un nuevo header y contenedor
+                if (d.getMonth() !== currentMonth) {
+                    currentMonth = d.getMonth();
+                    
+                    const header = document.createElement('h4');
+                    header.className = 'w-100 text-center fw-bold mt-4 mb-3 text-secondary';
+                    header.style.letterSpacing = '2px';
+                    header.textContent = mesNombres[currentMonth] + (d.getFullYear() !== hoy.getFullYear() ? ' ' + d.getFullYear() : '');
+                    container.appendChild(header);
+                    
+                    monthContainer = document.createElement('div');
+                    monthContainer.className = 'd-flex flex-wrap justify-content-center w-100 mb-4';
+                    container.appendChild(monthContainer);
+                }
+                
+                let diaNombre = dias[d.getDay()];
+                let diaNumero = d.getDate();
+                let cupos = Math.floor(Math.random() * 10) + 1;
+                
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-outline-primary m-2 d-flex flex-column align-items-center justify-content-center shadow-sm';
+                btn.style.width = '110px';
+                btn.style.height = '110px';
+                btn.style.borderRadius = '20px';
+                btn.style.transition = 'all 0.3s ease';
+                
+                btn.innerHTML = `
+                    <span class="text-uppercase fw-bold text-muted mb-1" style="font-size:0.8rem">${diaNombre}</span>
+                    <span class="fs-2 fw-bolder mb-1">${diaNumero}</span>
+                    <small class="text-muted" style="font-size:0.7rem">${cupos} turnos</small>
+                `;
+                
+                btn.onclick = () => {
+                    document.querySelectorAll('#wizard-dias-container .btn').forEach(b => {
+                        b.classList.remove('btn-primary', 'text-white');
+                        b.classList.add('btn-outline-primary');
+                        b.querySelectorAll('.text-muted').forEach(el => el.classList.remove('text-white-50'));
+                    });
+                    btn.classList.remove('btn-outline-primary');
+                    btn.classList.add('btn-primary', 'text-white');
+                    btn.querySelectorAll('.text-muted').forEach(el => el.classList.add('text-white-50'));
+                    
+                    wizardData.fecha = d.toISOString().split('T')[0];
+                    wizardShowHorarios(cupos);
+                };
+                
+                monthContainer.appendChild(btn);
+            }
+        })
+        .catch(err => {
+            console.error("Error cargando configuración", err);
+            container.innerHTML = '<div class="alert alert-danger w-100">Error cargando la agenda. Intente nuevamente.</div>';
+        });
 };
 
 window.wizardShowHorarios = function(cupos) {

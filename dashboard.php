@@ -78,9 +78,19 @@
                             <i class="bi bi-calendar-range me-2"></i> Agenda y Horarios
                         </a>
                     </li>
+                    <li class="nav-item admin-only d-none">
+                        <a class="nav-link d-flex align-items-center" href="#" id="menu-medicos">
+                            <i class="bi bi-person-lines-fill me-2"></i> Médicos
+                        </a>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link d-flex align-items-center" href="#" id="menu-turnos">
                             <i class="bi bi-calendar-check me-2"></i> Mis Turnos
+                        </a>
+                    </li>
+                    <li class="nav-item admin-only d-none mt-4">
+                        <a class="nav-link d-flex align-items-center text-muted" href="#" id="menu-configuracion">
+                            <i class="bi bi-gear me-2"></i> Configuración
                         </a>
                     </li>
                 </ul>
@@ -218,7 +228,37 @@
                 </div>
             </div>
 
+            <!-- VISTA: MEDICOS -->
+            <div id="content-medicos" class="d-none">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-3 mb-4 border-bottom">
+                    <h1 class="h2 fw-bold">Gestión de Médicos</h1>
+                </div>
+                <div class="row g-4" id="medicos-container">
+                    <div class="col-12 text-center text-muted py-5">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2">Cargando médicos...</p>
+                    </div>
+                </div>
+            </div>
 
+            <!-- VISTA: CONFIGURACION -->
+            <div id="content-configuracion" class="d-none">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-3 mb-4 border-bottom">
+                    <h1 class="h2 fw-bold">Configuración del Sistema</h1>
+                </div>
+                <div class="card border-0 shadow-sm rounded-4">
+                    <div class="card-body p-4">
+                        <form id="form-configuracion">
+                            <div class="mb-3">
+                                <label for="config-meses" class="form-label fw-bold">Meses visibles en agenda</label>
+                                <input type="number" class="form-control form-control-lg" id="config-meses" min="1" max="12" required>
+                                <div class="form-text">Define la cantidad de meses hacia adelante que los pacientes pueden visualizar para sacar turnos.</div>
+                            </div>
+                            <button type="submit" class="btn btn-primary px-4 py-2 rounded-pill">Guardar Configuración</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 </div>
@@ -387,6 +427,64 @@
 </a>
 
 <!-- Scripts UI Basicos -->
+<!-- Modal Editar Médico -->
+<div class="modal fade" id="modalEditMedico" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <div class="modal-header border-bottom-0 pb-0">
+        <h5 class="modal-title fw-bold">Editar Perfil Médico</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="form-edit-medico">
+            <input type="hidden" id="edit-medico-id">
+            <div class="mb-3 text-center">
+                <img src="assets/images/default-avatar.png" id="edit-medico-foto-preview" class="rounded-circle mb-2 object-fit-cover" width="100" height="100" style="border: 3px solid #e9ecef;">
+                <div>
+                    <label for="edit-medico-foto" class="btn btn-sm btn-outline-primary rounded-pill">Subir Foto</label>
+                    <input type="file" id="edit-medico-foto" class="d-none" accept="image/png, image/jpeg, image/webp">
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Matrícula</label>
+                <input type="text" class="form-control bg-light border-0 rounded-3" id="edit-medico-matricula">
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Dirección de Atención</label>
+                <input type="text" class="form-control bg-light border-0 rounded-3" id="edit-medico-direccion">
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Biografía / Presentación</label>
+                <textarea class="form-control bg-light border-0 rounded-3" id="edit-medico-biografia" rows="4"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary w-100 rounded-pill py-2 fw-bold">Guardar Cambios</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Coberturas Médico -->
+<div class="modal fade" id="modalCoberturasMedico" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <div class="modal-header border-bottom-0 pb-0">
+        <h5 class="modal-title fw-bold">Asignar Coberturas</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="form-coberturas-medico">
+            <input type="hidden" id="coberturas-medico-id">
+            <div id="coberturas-list-container" class="mb-4">
+                <!-- Se llenará dinámicamente -->
+            </div>
+            <button type="submit" class="btn btn-primary w-100 rounded-pill py-2 fw-bold">Guardar Coberturas</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     // Theme Toggle Logic
