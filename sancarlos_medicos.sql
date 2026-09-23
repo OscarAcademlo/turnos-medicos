@@ -1,4 +1,5 @@
 SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
 TRUNCATE TABLE medicos_especialidades;
 DELETE FROM especialidades;
 DELETE FROM usuarios WHERE rol = 'medico';

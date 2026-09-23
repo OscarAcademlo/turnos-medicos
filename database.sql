@@ -31,6 +31,15 @@ CREATE TABLE IF NOT EXISTS medicos_especialidades (
     FOREIGN KEY (especialidad_id) REFERENCES especialidades(id) ON DELETE CASCADE
 );
 
+-- Tabla Relacional: Médicos y sus Obras Sociales (Coberturas)
+CREATE TABLE IF NOT EXISTS medicos_obras_sociales (
+    usuario_id INT NOT NULL,
+    obra_social_id INT NOT NULL,
+    PRIMARY KEY (usuario_id, obra_social_id),
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+    FOREIGN KEY (obra_social_id) REFERENCES obras_sociales(id) ON DELETE CASCADE
+);
+
 -- Tabla de Horarios/Disponibilidad de los Médicos (Simplificada)
 CREATE TABLE IF NOT EXISTS horarios_medicos (
     id INT AUTO_INCREMENT PRIMARY KEY,

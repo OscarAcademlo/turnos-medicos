@@ -31,7 +31,14 @@ function handleBackendLogin(user, extraData = {}) {
     .then(data => {
         if(data.user) {
             localStorage.setItem('user', JSON.stringify(data.user));
-            window.location.href = 'dashboard.php';
+            
+            // Check for redirect params
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('redirect') === 'agendar' && urlParams.get('medico_id')) {
+                window.location.href = 'dashboard.php?agendar_medico_id=' + urlParams.get('medico_id');
+            } else {
+                window.location.href = 'dashboard.php';
+            }
         } else {
             showError(data.message || 'Error al conectar con el servidor.');
         }

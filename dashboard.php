@@ -172,7 +172,7 @@
                                 <thead class="table-light">
                                     <tr>
                                         <th class="ps-4">ID</th>
-                                        <th>Nombre (Obra Social - Plan)</th>
+                                        <th>Nombre (Obra Social)</th>
                                         <th class="pe-4 text-end">Acciones</th>
                                     </tr>
                                 </thead>
@@ -306,6 +306,48 @@
       <div class="modal-footer border-top-0 pt-0">
         <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Cancelar</button>
         <button type="button" class="btn btn-primary rounded-pill" onclick="crearPersonal()">Crear</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Gestión de Planes -->
+<div class="modal fade" id="modalGestionPlanes" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <div class="modal-header border-bottom-0 pb-0">
+        <h1 class="modal-title fs-5 fw-bold" id="modalGestionPlanesTitle">Planes de Obra Social</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="gestion-plan-os-id">
+        
+        <!-- Formulario para agregar plan -->
+        <form id="form-crear-plan" class="mb-4">
+            <div class="input-group">
+                <input type="text" class="form-control" id="new-plan-nombre" placeholder="Nombre del nuevo plan" required>
+                <button class="btn btn-primary" type="submit"><i class="bi bi-plus"></i> Añadir Plan</button>
+            </div>
+        </form>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="planes-table">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nombre del Plan</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-planes">
+                    <tr>
+                        <td colspan="2" class="text-center py-3 text-muted">Cargando planes...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+      </div>
+      <div class="modal-footer border-top-0 pt-0">
+        <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Cerrar</button>
       </div>
     </div>
   </div>

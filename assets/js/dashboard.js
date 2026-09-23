@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Verificar si el usuario tiene datos básicos locales
     if(!userJson) {
-        window.location.href = 'index.php';
+        window.location.href = 'login.php';
         return;
     }
 
@@ -23,6 +23,19 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Setear datos en la UI
             document.getElementById('user-name-display').textContent = user.nombre;
+
+            // Auto-abrir modal de turno si venimos de la agenda pública
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('agendar_medico_id')) {
+                setTimeout(() => {
+                    const modalEl = document.getElementById('modalNuevoTurno');
+                    if (modalEl) {
+                        const modal = new bootstrap.Modal(modalEl);
+                        modal.show();
+                    }
+                }, 500);
+            }
+            
             document.getElementById('user-role-display').textContent = user.rol.toUpperCase();
 
             // Mostrar menús restringidos según el rol real de la BD
@@ -34,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
         .catch(() => {
             // Si la sesión en PHP expiró, forzamos logout
             localStorage.removeItem('user');
-            window.location.href = 'index.php';
+            window.location.href = 'login.php';
         });
 
     const menuDashboard = document.getElementById('menu-dashboard');
@@ -105,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         auth.signOut().then(() => {
             localStorage.removeItem('user');
-            window.location.href = 'index.php';
+            window.location.href = 'login.php';
         });
     });
 });
@@ -243,6 +256,7 @@ function cargarObrasSociales() {
                             <td class="ps-4 fw-bold text-muted">#${obra.id}</td>
                             <td>${obra.nombre}</td>
                             <td class="pe-4 text-end">
+                                <button class="btn btn-sm btn-outline-info rounded-pill px-3 me-2" onclick="abrirGestionPlanes(${obra.id}, '${obra.nombre.replace(/'/g, "\\'")}')"><i class="bi bi-card-list"></i> Planes</button>
                                 <button class="btn btn-sm btn-outline-primary rounded-circle"><i class="bi bi-pencil"></i></button>
                                 <button class="btn btn-sm btn-outline-danger rounded-circle"><i class="bi bi-trash"></i></button>
                             </td>
@@ -361,4 +375,85 @@ if(modalTurno) {
                 }
             });
     });
+}
+
+// --- Gestión de Planes por Obra Social ---
+function abrirGestionPlanes(obraSocialId, obraSocialNombre) {
+    document.getElementById('gestion-plan-os-id').value = obraSocialId;
+    document.getElementById('modalGestionPlanesTitle').textContent = `Planes de: ${obraSocialNombre}`;
+    cargarPlanesAdmin(obraSocialId);
+    const modal = new bootstrap.Modal(document.getElementById('modalGestionPlanes'));
+    modal.show();
+}
+
+function cargarPlanesAdmin(obraSocialId) {
+    const tbody = document.getElementById('tabla-planes');
+    tbody.innerHTML = '<tr><td colspan="2" class="text-center py-3 text-muted">Cargando planes...</td></tr>';
+    
+    fetch(`backend/api/crud_planes.php?obra_social_id=${obraSocialId}`)
+        .then(res => res.json())
+        .then(data => {
+            tbody.innerHTML = '';
+            if(data.length > 0) {
+                data.forEach(p => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${p.nombre}</td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-danger rounded-circle" onclick="eliminarPlan(${p.id})"><i class="bi bi-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="2" class="text-center py-3 text-muted">No hay planes para esta obra social.</td></tr>';
+            }
+        })
+        .catch(() => {
+            tbody.innerHTML = '<tr><td colspan="2" class="text-center py-3 text-danger">Error al cargar planes.</td></tr>';
+        });
+}
+
+document.getElementById('form-crear-plan').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const osId = document.getElementById('gestion-plan-os-id').value;
+    const nombre = document.getElementById('new-plan-nombre').value;
+    const btn = this.querySelector('button[type="submit"]');
+    
+    btn.disabled = true;
+    
+    fetch('backend/api/crud_planes.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ obra_social_id: osId, nombre: nombre })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.message.includes('exitosamente')) {
+            document.getElementById('new-plan-nombre').value = '';
+            cargarPlanesAdmin(osId);
+        } else {
+            alert(data.message || 'Error al crear plan');
+        }
+    })
+    .catch(() => alert('Error de conexión'))
+    .finally(() => btn.disabled = false);
+});
+
+function eliminarPlan(id) {
+    if(!confirm('¿Estás seguro de eliminar este plan?')) return;
+    
+    const osId = document.getElementById('gestion-plan-os-id').value;
+    
+    fetch('backend/api/crud_planes.php', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: id })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        cargarPlanesAdmin(osId);
+    })
+    .catch(() => alert('Error de conexión'));
 }

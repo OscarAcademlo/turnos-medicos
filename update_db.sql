@@ -37,3 +37,12 @@ ALTER TABLE turnos
 
 -- 7. Hacer que paciente_id sea NULL para permitir slots libres
 ALTER TABLE turnos MODIFY paciente_id INT NULL;
+
+-- 8. Tabla Relacional: Médicos y sus Obras Sociales (Coberturas)
+CREATE TABLE IF NOT EXISTS medicos_obras_sociales (
+    usuario_id INT NOT NULL,
+    obra_social_id INT NOT NULL,
+    PRIMARY KEY (usuario_id, obra_social_id),
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+    FOREIGN KEY (obra_social_id) REFERENCES obras_sociales(id) ON DELETE CASCADE
+);
