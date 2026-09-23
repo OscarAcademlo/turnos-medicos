@@ -55,47 +55,51 @@
 <div class="container-fluid">
     <div class="row">
         <!-- Sidebar -->
-        <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block sidebar collapse">
-            <div class="position-sticky pt-4 px-2">
-                <ul class="nav flex-column gap-1" id="nav-menu">
-                    <li class="nav-item">
-                        <a class="nav-link active d-flex align-items-center" href="#" id="menu-dashboard">
-                            <i class="bi bi-house-door me-2"></i> Inicio
-                        </a>
-                    </li>
-                    <li class="nav-item admin-only d-none">
-                        <a class="nav-link d-flex align-items-center" href="#" id="menu-usuarios">
-                            <i class="bi bi-people me-2"></i> Gestión de Usuarios
-                        </a>
-                    </li>
-                    <li class="nav-item admin-only d-none">
-                        <a class="nav-link d-flex align-items-center" href="#" id="menu-obras">
-                            <i class="bi bi-building me-2"></i> Obras Sociales
-                        </a>
-                    </li>
-                    <li class="nav-item admin-only d-none">
-                        <a class="nav-link d-flex align-items-center" href="#" id="menu-agenda-admin">
-                            <i class="bi bi-calendar-range me-2"></i> Agenda y Horarios
-                        </a>
-                    </li>
-                    <li class="nav-item admin-only d-none">
-                        <a class="nav-link d-flex align-items-center" href="#" id="menu-medicos">
-                            <i class="bi bi-person-lines-fill me-2"></i> Médicos
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link d-flex align-items-center" href="#" id="menu-turnos">
-                            <i class="bi bi-calendar-check me-2"></i> Mis Turnos
-                        </a>
-                    </li>
-                    <li class="nav-item admin-only d-none mt-4">
-                        <a class="nav-link d-flex align-items-center text-muted" href="#" id="menu-configuracion">
-                            <i class="bi bi-gear me-2"></i> Configuración
-                        </a>
-                    </li>
-                </ul>
+        <div class="offcanvas-md offcanvas-end bg-body-tertiary sidebar border-end col-md-3 col-lg-2 p-0 h-100" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel">
+            <div class="offcanvas-header">
+                    <h5 class="offcanvas-title" id="sidebarMenuLabel">Menú</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#sidebarMenu" aria-label="Close"></button>
+                </div>
+                <div class="offcanvas-body d-md-flex flex-column p-0 pt-lg-3 overflow-y-auto">
+                    <ul class="nav flex-column gap-1 w-100 px-2" id="nav-menu">
+                        <li class="nav-item">
+                            <a class="nav-link active d-flex align-items-center" href="#" id="menu-dashboard">
+                                <i class="bi bi-house-door me-2"></i> Inicio
+                            </a>
+                        </li>
+                        <li class="nav-item admin-only d-none">
+                            <a class="nav-link d-flex align-items-center" href="#" id="menu-usuarios">
+                                <i class="bi bi-people me-2"></i> Gestión de Usuarios
+                            </a>
+                        </li>
+                        <li class="nav-item admin-only d-none">
+                            <a class="nav-link d-flex align-items-center" href="#" id="menu-obras">
+                                <i class="bi bi-building me-2"></i> Obras Sociales
+                            </a>
+                        </li>
+                        <li class="nav-item admin-only d-none">
+                            <a class="nav-link d-flex align-items-center" href="#" id="menu-agenda-admin">
+                                <i class="bi bi-calendar-range me-2"></i> Agenda y Horarios
+                            </a>
+                        </li>
+                        <li class="nav-item admin-only d-none">
+                            <a class="nav-link d-flex align-items-center" href="#" id="menu-medicos">
+                                <i class="bi bi-person-lines-fill me-2"></i> Médicos
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link d-flex align-items-center" href="#" id="menu-turnos">
+                                <i class="bi bi-calendar-check me-2"></i> Mis Turnos
+                            </a>
+                        </li>
+                        <li class="nav-item admin-only d-none mt-4">
+                            <a class="nav-link d-flex align-items-center text-muted" href="#" id="menu-configuracion">
+                                <i class="bi bi-gear me-2"></i> Configuración
+                            </a>
+                        </li>
+                    </ul>
+                </div>
             </div>
-        </nav>
 
         <!-- Contenido Principal -->
         <main class="col-md-9 ms-sm-auto col-lg-10 px-3 px-md-4 py-4">
