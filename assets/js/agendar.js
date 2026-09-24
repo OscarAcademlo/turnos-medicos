@@ -395,18 +395,25 @@ window.wizardCargarObrasSociales = function() {
             }
 
             if(!data[0] || !data[0].obras_sociales || data[0].obras_sociales.length === 0) {
-                fetch('backend/api/crud_obras_sociales.php')
-                    .then(res => res.json())
-                    .then(todas => {
-                        if (todas.length === 0) {
-                            container.innerHTML = '<span class="text-muted">No hay obras sociales cargadas en el sistema. Puedes continuar como Particular.</span>';
-                            return;
-                        }
-                        renderObras(todas);
-                    });
+                container.innerHTML = `
+                    <div class="col-12 text-center py-4">
+                        <div class="alert alert-light border shadow-sm rounded-4 p-4 d-inline-block text-center" style="max-width: 500px;">
+                            <i class="bi bi-info-circle-fill text-primary fs-3 d-block mb-2"></i>
+                            <h6 class="fw-bold mb-1">Atención Particular Únicamente</h6>
+                            <p class="text-muted small mb-3">Este profesional no tiene obras sociales asignadas en el sistema actualmente.</p>
+                            <button class="btn btn-primary rounded-pill px-4 py-2 fw-semibold shadow-sm" onclick="wizardSelectCobertura('particular', 'Particular')">
+                                <i class="bi bi-arrow-right-circle me-1"></i> Continuar de forma Particular
+                            </button>
+                        </div>
+                    </div>
+                `;
+                const searchWrap = document.getElementById('wizard-search-os')?.parentElement;
+                if (searchWrap) searchWrap.style.display = 'none';
                 return;
             }
             
+            const searchWrap = document.getElementById('wizard-search-os')?.parentElement;
+            if (searchWrap) searchWrap.style.display = 'block';
             renderObras(data[0].obras_sociales);
         })
         .catch(err => {
@@ -528,6 +535,19 @@ window.wizardRenderCalendarioMock = function() {
             
             const tieneHorariosCargados = wizardData.medico && Array.isArray(wizardData.medico.horarios) && wizardData.medico.horarios.length > 0;
 
+            if (!tieneHorariosCargados) {
+                container.innerHTML = `
+                    <div class="col-12 text-center py-4">
+                        <div class="alert alert-light border shadow-sm rounded-4 p-4 d-inline-block text-center" style="max-width: 500px;">
+                            <i class="bi bi-calendar-x text-warning fs-1 d-block mb-2"></i>
+                            <h6 class="fw-bold mb-1">Sin horarios configurados</h6>
+                            <p class="text-muted small mb-0">El profesional no cuenta con horarios de atención asignados en este momento. Por favor, consulta más adelante o contacta al consultorio.</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
             let currentMonth = -1;
             let monthContainer = null;
 
@@ -556,12 +576,10 @@ window.wizardRenderCalendarioMock = function() {
                 let diaNorm = diasMap[d.getDay()];
                 let diaNumero = d.getDate();
                 
-                const bloquesDelDia = tieneHorariosCargados 
-                    ? wizardData.medico.horarios.filter(h => normalizarDia(h.dia_semana) === diaNorm) 
-                    : [];
+                const bloquesDelDia = wizardData.medico.horarios.filter(h => normalizarDia(h.dia_semana) === diaNorm);
 
-                // Si el médico tiene horarios configurados pero no atiende este día de la semana
-                if (tieneHorariosCargados && bloquesDelDia.length === 0) {
+                // Si no atiende este día de la semana
+                if (bloquesDelDia.length === 0) {
                     const btn = document.createElement('button');
                     btn.className = 'btn btn-light m-2 d-flex flex-column align-items-center justify-content-center shadow-none text-muted opacity-50';
                     btn.style.width = '110px';
@@ -580,22 +598,18 @@ window.wizardRenderCalendarioMock = function() {
 
                 // Calcular cantidad real de turnos disponibles según horarios y duración seteada
                 let cupos = 0;
-                if (bloquesDelDia.length > 0) {
-                    bloquesDelDia.forEach(bloque => {
-                        const duracion = parseInt(bloque.duracion_turno_minutos) || 30;
-                        const [hIni, mIni] = (bloque.hora_inicio || '08:00').split(':').map(Number);
-                        let [hFin, mFin] = (bloque.hora_fin || '12:00').split(':').map(Number);
-                        if (hFin === 0 && mFin === 0) hFin = 14;
-                        let cur = hIni * 60 + mIni;
-                        const end = hFin * 60 + mFin;
-                        while (cur + duracion <= end) {
-                            cupos++;
-                            cur += duracion;
-                        }
-                    });
-                } else {
-                    cupos = 6;
-                }
+                bloquesDelDia.forEach(bloque => {
+                    const duracion = parseInt(bloque.duracion_turno_minutos) || 30;
+                    const [hIni, mIni] = (bloque.hora_inicio || '08:00').split(':').map(Number);
+                    let [hFin, mFin] = (bloque.hora_fin || '12:00').split(':').map(Number);
+                    if (hFin === 0 && mFin === 0) hFin = 14;
+                    let cur = hIni * 60 + mIni;
+                    const end = hFin * 60 + mFin;
+                    while (cur + duracion <= end) {
+                        cupos++;
+                        cur += duracion;
+                    }
+                });
                 
                 const btn = document.createElement('button');
                 btn.className = 'btn btn-outline-primary m-2 d-flex flex-column align-items-center justify-content-center shadow-sm';
@@ -750,47 +764,18 @@ window.wizardAbrirModalHorarios = function(dateObj) {
                 list.innerHTML = `<div class="p-3 text-muted">No hay horarios disponibles en el rango de atención.</div>`;
             }
         });
-    } else if (tieneHorariosCargados) {
-        sedeBanner.innerHTML = '';
-        sedeBanner.classList.add('d-none');
-        list.innerHTML = `
-            <div class="py-4 text-center">
-                <i class="bi bi-calendar-x text-warning fs-1 d-block mb-2"></i>
-                <h6 class="fw-bold mb-1">Sin turnos para este día</h6>
-                <p class="text-muted small mb-0">El profesional no atiende los días ${diaNombre}. Por favor elige otro día en el calendario.</p>
-            </div>
-        `;
     } else {
         sedeBanner.innerHTML = '';
         sedeBanner.classList.add('d-none');
         wizardData.unidadId = null;
         wizardData.sedeNombre = null;
-
-        let baseHour = 9;
-        for(let i=0; i<6; i++) {
-            let hr = baseHour + Math.floor(i/2);
-            let min = (i%2 === 0) ? '00' : '30';
-            let timeStr = `${hr.toString().padStart(2, '0')}:${min}`;
-            
-            const btn = document.createElement('button');
-            btn.className = 'btn btn-outline-primary px-4 py-2 fw-bold shadow-sm rounded-pill';
-            btn.textContent = timeStr + ' hs';
-            btn.onclick = () => {
-                document.querySelectorAll('#modal-horarios-list .btn').forEach(b => {
-                    b.classList.remove('btn-primary', 'text-white');
-                    b.classList.add('btn-outline-primary');
-                });
-                btn.classList.remove('btn-outline-primary');
-                btn.classList.add('btn-primary', 'text-white');
-                wizardData.hora = timeStr;
-                if (infoHora && textoHora) {
-                    textoHora.textContent = timeStr + ' hs';
-                    infoHora.classList.remove('d-none');
-                }
-                btnConfirmar.classList.remove('d-none');
-            };
-            list.appendChild(btn);
-        }
+        list.innerHTML = `
+            <div class="py-4 text-center">
+                <i class="bi bi-calendar-x text-warning fs-1 d-block mb-2"></i>
+                <h6 class="fw-bold mb-1">Sin turnos disponibles</h6>
+                <p class="text-muted small mb-0">El profesional no atiende los días ${diaNombre} o no tiene horarios disponibles configurados.</p>
+            </div>
+        `;
     }
 
     const modalEl = document.getElementById('modalHorariosTurno');

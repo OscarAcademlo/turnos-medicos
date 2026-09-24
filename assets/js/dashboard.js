@@ -439,6 +439,21 @@ function cargarMisTurnos() {
                                     <i class="bi bi-shield-check text-muted me-2"></i>
                                     <span class="text-muted small">${coberturaText}</span>
                                 </div>
+                                ${(() => {
+                                    if (!turno.creado_en) return '';
+                                    const dCreacion = new Date(turno.creado_en.replace(' ', 'T'));
+                                    if (isNaN(dCreacion.getTime())) return '';
+                                    const diaC = String(dCreacion.getDate()).padStart(2, '0');
+                                    const mesC = String(dCreacion.getMonth() + 1).padStart(2, '0');
+                                    const anioC = dCreacion.getFullYear();
+                                    const horaC = String(dCreacion.getHours()).padStart(2, '0');
+                                    const minC = String(dCreacion.getMinutes()).padStart(2, '0');
+                                    return `
+                                        <div class="mt-3 pt-2 border-top text-muted d-flex align-items-center" style="font-size:0.75rem;">
+                                            <i class="bi bi-clock-history me-1 text-primary"></i> Turno sacado el ${diaC}/${mesC}/${anioC} a las ${horaC}:${minC} hs
+                                        </div>
+                                    `;
+                                })()}
                             </div>
                         </div>
                     </div>
@@ -1131,7 +1146,7 @@ function renderMedicos(medicos) {
             }).join('')
             : `<span class="text-muted small">Sin horarios configurados</span>`;
         
-        const cantCoberturas = (med.obras_sociales ? med.obras_sociales.length : 0) + (med.planes ? med.planes.length : 0);
+        const cantCoberturas = med.obras_sociales ? med.obras_sociales.length : 0;
 
         const html = `
             <div class="col-md-6 col-lg-4">

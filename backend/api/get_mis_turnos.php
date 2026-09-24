@@ -62,7 +62,7 @@ try {
 try {
     $query_base = "
         SELECT 
-            t.id, t.fecha, t.hora_inicio, t.estado,
+            t.id, t.fecha, t.hora_inicio, t.estado, t.creado_en,
             u.nombre as medico_nombre,
             u.apellido as medico_apellido,
             COALESCE(e.nombre, 'Consulta General') as especialidad_nombre,
@@ -99,7 +99,7 @@ try {
     try {
         $fallback_query = "
             SELECT 
-                t.id, t.fecha, t.hora_inicio, t.estado,
+                t.id, t.fecha, t.hora_inicio, t.estado, t.creado_en,
                 u.nombre as medico_nombre,
                 u.apellido as medico_apellido,
                 COALESCE(e.nombre, 'Consulta General') as especialidad_nombre,
