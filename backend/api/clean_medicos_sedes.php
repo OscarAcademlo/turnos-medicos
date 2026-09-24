@@ -19,49 +19,69 @@ function ejecutarLimpiezaMedicosSedes($db) {
         $db->exec("ALTER TABLE unidades_atencion ADD COLUMN localidad VARCHAR(100) NULL AFTER numero");
     }
 
+    // Asegurar columnas latitud y longitud
+    $colsLat = $db->query("SHOW COLUMNS FROM unidades_atencion LIKE 'latitud'")->fetchAll();
+    if (empty($colsLat)) {
+        $db->exec("ALTER TABLE unidades_atencion ADD COLUMN latitud DECIMAL(10,8) NULL AFTER localidad");
+    }
+    $colsLng = $db->query("SHOW COLUMNS FROM unidades_atencion LIKE 'longitud'")->fetchAll();
+    if (empty($colsLng)) {
+        $db->exec("ALTER TABLE unidades_atencion ADD COLUMN longitud DECIMAL(11,8) NULL AFTER latitud");
+    }
+
     // Asegurar columna unidad_id en horarios_medicos
     $colsH = $db->query("SHOW COLUMNS FROM horarios_medicos LIKE 'unidad_id'")->fetchAll();
     if (empty($colsH)) {
         $db->exec("ALTER TABLE horarios_medicos ADD COLUMN unidad_id INT NULL");
     }
 
-    // 2. Insertar / Actualizar las sedes principales de San Carlos de Bariloche
+    // 2. Insertar / Actualizar las sedes principales de San Carlos de Bariloche con coordenadas exactas
     $sedesIniciales = [
         [
             'nombre' => 'Pasaje Gutiérrez',
             'calle' => 'Pasaje Gutiérrez',
             'numero' => '980',
-            'localidad' => 'San Carlos de Bariloche'
+            'localidad' => 'San Carlos de Bariloche',
+            'latitud' => -41.1415571,
+            'longitud' => -71.3132086
         ],
         [
             'nombre' => 'Mitre 124 (4to Piso)',
             'calle' => 'Bartolomé Mitre',
             'numero' => '124',
-            'localidad' => 'San Carlos de Bariloche'
+            'localidad' => 'San Carlos de Bariloche',
+            'latitud' => -41.1336564,
+            'longitud' => -71.3078764
         ],
         [
             'nombre' => 'Mitre 124 (3er Piso)',
             'calle' => 'Bartolomé Mitre',
             'numero' => '124',
-            'localidad' => 'San Carlos de Bariloche'
+            'localidad' => 'San Carlos de Bariloche',
+            'latitud' => -41.1336564,
+            'longitud' => -71.3078764
         ],
         [
             'nombre' => 'Frey 111',
             'calle' => 'Frey',
             'numero' => '111',
-            'localidad' => 'San Carlos de Bariloche'
+            'localidad' => 'San Carlos de Bariloche',
+            'latitud' => -41.1345200,
+            'longitud' => -71.3055300
         ],
         [
             'nombre' => 'Km 1 (Av. Bustillo)',
             'calle' => 'Av. Exequiel Bustillo',
             'numero' => '1000',
-            'localidad' => 'San Carlos de Bariloche'
+            'localidad' => 'San Carlos de Bariloche',
+            'latitud' => -41.1310000,
+            'longitud' => -71.3250000
         ]
     ];
 
     $stmtCheckSede = $db->prepare("SELECT id FROM unidades_atencion WHERE nombre = :nombre OR (calle = :calle AND numero = :numero)");
-    $stmtInsertSede = $db->prepare("INSERT INTO unidades_atencion (nombre, calle, numero, localidad) VALUES (:nombre, :calle, :numero, :localidad)");
-    $stmtUpdateSede = $db->prepare("UPDATE unidades_atencion SET calle = :calle, numero = :numero, localidad = :localidad WHERE id = :id");
+    $stmtInsertSede = $db->prepare("INSERT INTO unidades_atencion (nombre, calle, numero, localidad, latitud, longitud) VALUES (:nombre, :calle, :numero, :localidad, :latitud, :longitud)");
+    $stmtUpdateSede = $db->prepare("UPDATE unidades_atencion SET calle = :calle, numero = :numero, localidad = :localidad, latitud = :latitud, longitud = :longitud WHERE id = :id");
 
     $sedesMap = []; // 'pasaje gutierrez' => id, etc.
 
@@ -73,6 +93,8 @@ function ejecutarLimpiezaMedicosSedes($db) {
                 ':calle' => $si['calle'],
                 ':numero' => $si['numero'],
                 ':localidad' => $si['localidad'],
+                ':latitud' => $si['latitud'],
+                ':longitud' => $si['longitud'],
                 ':id' => $row['id']
             ]);
             $sedesMap[mb_strtolower($si['nombre'], 'UTF-8')] = $row['id'];
@@ -81,7 +103,9 @@ function ejecutarLimpiezaMedicosSedes($db) {
                 ':nombre' => $si['nombre'],
                 ':calle' => $si['calle'],
                 ':numero' => $si['numero'],
-                ':localidad' => $si['localidad']
+                ':localidad' => $si['localidad'],
+                ':latitud' => $si['latitud'],
+                ':longitud' => $si['longitud']
             ]);
             $sedesMap[mb_strtolower($si['nombre'], 'UTF-8')] = $db->lastInsertId();
         }

@@ -25,12 +25,12 @@
     <!-- Header / Navbar estilo Glass -->
     <header class="py-3 mb-5 shadow-sm" style="background: rgba(255, 255, 255, 0.5); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255, 255, 255, 0.2);">
         <div class="container d-flex flex-wrap justify-content-between align-items-center">
-            <a href="/" class="d-flex align-items-center mb-2 mb-md-0 text-decoration-none" style="color: var(--bs-primary);">
+            <a href="index.php" class="d-flex align-items-center mb-2 mb-md-0 text-decoration-none" style="color: var(--bs-primary);">
                 <i class="bi bi-heart-pulse-fill fs-3 me-2"></i>
                 <span class="fs-4 fw-bold">Clínica Médica</span>
             </a>
             
-            <div class="text-end">
+            <div class="text-end" id="header-auth-buttons">
                 <a href="login.php" class="btn btn-primary rounded-pill px-4 fw-semibold shadow-sm">
                     <i class="bi bi-person-circle me-1"></i> Iniciar Sesión / Registrarse
                 </a>
@@ -138,8 +138,47 @@
     <!-- Scripts Propios -->
     <script src="assets/js/agenda_publica.js?v=<?php echo filemtime('assets/js/agenda_publica.js'); ?>"></script>
 
-    <!-- Script de Modo Oscuro -->
+    <!-- Script de Estado de Sesión y Modo Oscuro -->
     <script>
+        // Sincronizar estado de sesión en el header
+        (function verificarSesionEnHeader() {
+            try {
+                const userJson = localStorage.getItem('user');
+                if (!userJson) return;
+                const user = JSON.parse(userJson);
+                const authContainer = document.getElementById('header-auth-buttons');
+                if (!authContainer || !user || !user.nombre) return;
+
+                const esAdmin = ['superadmin', 'admin', 'recepcionista'].includes(user.rol);
+                const textoBoton = esAdmin ? 'Panel de Administración' : 'Mis Turnos';
+                const iconoBoton = esAdmin ? 'bi-speedometer2' : 'bi-calendar2-check';
+
+                authContainer.innerHTML = `
+                    <div class="d-flex align-items-center gap-2 justify-content-end">
+                        <span class="text-muted d-none d-sm-inline small">
+                            <i class="bi bi-person-check-fill text-success me-1"></i>
+                            Hola, <strong>${user.nombre}</strong>
+                        </span>
+                        <a href="dashboard.php" class="btn btn-primary rounded-pill px-3 py-2 fw-semibold shadow-sm d-inline-flex align-items-center gap-1">
+                            <i class="bi ${iconoBoton}"></i> <span>${textoBoton}</span>
+                        </a>
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-3 py-2 fw-semibold btn-sm" onclick="cerrarSesionHeader()" title="Cerrar sesión">
+                            <i class="bi bi-box-arrow-right"></i>
+                        </button>
+                    </div>
+                `;
+            } catch (e) {
+                console.error('Error al sincronizar header de usuario:', e);
+            }
+        })();
+
+        window.cerrarSesionHeader = function() {
+            if (confirm('¿Deseas cerrar la sesión?')) {
+                localStorage.removeItem('user');
+                window.location.href = 'backend/api/logout.php';
+            }
+        };
+
         const themeToggle = document.getElementById('theme-toggle');
         const htmlElement = document.documentElement;
         

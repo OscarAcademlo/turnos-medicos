@@ -68,7 +68,8 @@ foreach($medicos as &$medico) {
     // Horarios
     $q_h = "
         SELECT h.id, h.dia_semana, h.hora_inicio, h.hora_fin, h.duracion_turno_minutos, h.unidad_id, 
-               ua.nombre as unidad_nombre, ua.calle as unidad_calle, ua.numero as unidad_numero, ua.localidad as unidad_localidad
+               ua.nombre as unidad_nombre, ua.calle as unidad_calle, ua.numero as unidad_numero, ua.localidad as unidad_localidad,
+               ua.latitud as unidad_latitud, ua.longitud as unidad_longitud
         FROM horarios_medicos h
         LEFT JOIN unidades_atencion ua ON h.unidad_id = ua.id
         WHERE h.medico_id = :id

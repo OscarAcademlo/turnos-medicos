@@ -1,3 +1,25 @@
+// Si ya hay sesión activa guardada y no se solicitó logout explícito, redirigir
+(function checkExistingSession() {
+    const userSaved = localStorage.getItem('user');
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('logout') === 'true') {
+        localStorage.removeItem('user');
+        return;
+    }
+    if (userSaved) {
+        try {
+            const u = JSON.parse(userSaved);
+            if (u && (u.email || u.id)) {
+                if (urlParams.get('redirect') === 'agendar' && urlParams.get('medico_id')) {
+                    window.location.href = 'agendar.php?medico_id=' + urlParams.get('medico_id');
+                } else {
+                    window.location.href = 'dashboard.php';
+                }
+            }
+        } catch(e) {}
+    }
+})();
+
 const loginForm = document.getElementById('login-form');
 const googleLoginBtn = document.getElementById('google-login-btn');
 const errorDiv = document.getElementById('login-error');

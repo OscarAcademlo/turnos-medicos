@@ -632,6 +632,8 @@
       <div class="modal-body p-4">
         <form id="form-sede">
             <input type="hidden" id="sede-id">
+            <input type="hidden" id="sede-latitud">
+            <input type="hidden" id="sede-longitud">
 
             <!-- Buscador con autocompletar inteligente -->
             <div class="mb-3 position-relative">

@@ -8,8 +8,29 @@ function limpiarNombre(str) {
 }
 window.limpiarNombre = limpiarNombre;
 
+// Resolver coordenadas geográficas para garantizar el PIN rojo en el mapa
+function resolverCoordenadasSede(nombre, calle, numero, localidad, lat, lng) {
+    if (lat && lng && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng))) {
+        return { lat: parseFloat(lat), lng: parseFloat(lng) };
+    }
+    const txt = `${nombre || ''} ${calle || ''} ${numero || ''}`.toLowerCase();
+    if (txt.includes('gutierrez') || txt.includes('gutiérrez') || txt.includes('980')) {
+        return { lat: -41.1415571, lng: -71.3132086 };
+    }
+    if (txt.includes('mitre') || txt.includes('124') || txt.includes('120')) {
+        return { lat: -41.1336564, lng: -71.3078764 };
+    }
+    if (txt.includes('frey') || txt.includes('111')) {
+        return { lat: -41.13452, lng: -71.30553 };
+    }
+    if (txt.includes('km') || txt.includes('bustillo') || txt.includes('1000')) {
+        return { lat: -41.131, lng: -71.325 };
+    }
+    return null;
+}
+
 // Modal y Mapa de Sede con Google Maps & Cómo llegar
-window.verMapaDeSede = function(nombre, calle, numero, localidad) {
+window.verMapaDeSede = function(nombre, calle, numero, localidad, lat, lng) {
     const modalEl = document.getElementById('modalVerSedeMapa');
     if (!modalEl) return;
 
@@ -20,18 +41,30 @@ window.verMapaDeSede = function(nombre, calle, numero, localidad) {
 
     const dirPartes = [calle, numero].filter(Boolean).join(' ');
     const dirCompleta = [dirPartes, localidad].filter(Boolean).join(', ') || nombre;
-    const busquedaGoogle = [nombre, dirPartes, localidad, 'Argentina'].filter(Boolean).join(', ');
+    const coords = resolverCoordenadasSede(nombre, calle, numero, localidad, lat, lng);
 
     document.getElementById('modal-sede-mapa-nombre').textContent = nombre;
     document.getElementById('modal-sede-mapa-direccion').textContent = dirCompleta;
 
     const iframe = document.getElementById('modal-sede-mapa-iframe');
-    const embedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(busquedaGoogle)}&t=&z=16&ie=UTF8&iwloc=&output=embed`;
-    iframe.src = embedUrl;
+    let embedUrl = '';
+    let urlDestino = '';
+
+    if (coords) {
+        // Con coordenadas numéricas exactas, Google Maps coloca el marcador / PIN rojo garantizado
+        embedUrl = `https://maps.google.com/maps?q=${coords.lat},${coords.lng}&hl=es&z=17&output=embed`;
+        urlDestino = `${coords.lat},${coords.lng}`;
+    } else {
+        const busquedaGoogle = [calle, numero, localidad, 'Argentina'].filter(Boolean).join(', ');
+        embedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(busquedaGoogle)}&hl=es&z=17&output=embed`;
+        urlDestino = encodeURIComponent(busquedaGoogle);
+    }
+
+    if (iframe) iframe.src = embedUrl;
 
     const btnComoLlegar = document.getElementById('modal-sede-mapa-btn-comollegar');
     if (btnComoLlegar) {
-        btnComoLlegar.href = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(busquedaGoogle)}`;
+        btnComoLlegar.href = `https://www.google.com/maps/dir/?api=1&destination=${urlDestino}`;
     }
 
     const bsModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
@@ -44,7 +77,9 @@ window.abrirModalSedeDesdeBtn = function(btn) {
     const calle = decodeURIComponent(btn.getAttribute('data-calle') || '');
     const numero = decodeURIComponent(btn.getAttribute('data-numero') || '');
     const localidad = decodeURIComponent(btn.getAttribute('data-localidad') || '');
-    verMapaDeSede(nombre, calle, numero, localidad);
+    const lat = btn.getAttribute('data-lat') || '';
+    const lng = btn.getAttribute('data-lng') || '';
+    verMapaDeSede(nombre, calle, numero, localidad, lat, lng);
 };
 function obtenerAvatarDefault(nombre, apellido) {
     const texto = `${nombre || ''} ${apellido || ''}`.trim().toLowerCase();
@@ -163,6 +198,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                     data-calle="${encodeURIComponent(h.unidad_calle || '')}" 
                                     data-numero="${encodeURIComponent(h.unidad_numero || '')}" 
                                     data-localidad="${encodeURIComponent(h.unidad_localidad || '')}"
+                                    data-lat="${h.unidad_latitud || ''}"
+                                    data-lng="${h.unidad_longitud || ''}"
                                     onclick="abrirModalSedeDesdeBtn(this)" 
                                     title="Ver ubicación en Google Maps y cómo llegar">
                                     <i class="bi bi-geo-alt-fill text-danger me-1"></i>${h.unidad_nombre}

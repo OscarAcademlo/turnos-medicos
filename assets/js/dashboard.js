@@ -5,8 +5,29 @@ function limpiarNombre(str) {
 }
 window.limpiarNombre = limpiarNombre;
 
+// Helper: Resolver coordenadas exactas de sedes conocidas o pasadas
+function resolverCoordenadasSede(nombre, calle, numero, localidad, lat, lng) {
+    if (lat && lng && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng))) {
+        return { lat: parseFloat(lat), lng: parseFloat(lng) };
+    }
+    const txt = `${nombre || ''} ${calle || ''} ${numero || ''} ${localidad || ''}`.toLowerCase();
+    if (txt.includes('gutierrez') || txt.includes('gutiérrez')) {
+        return { lat: -41.1415571, lng: -71.3132086 };
+    }
+    if (txt.includes('mitre')) {
+        return { lat: -41.1336564, lng: -71.3078764 };
+    }
+    if (txt.includes('frey')) {
+        return { lat: -41.13452, lng: -71.30553 };
+    }
+    if (txt.includes('km') || txt.includes('bustillo') || txt.includes('1000')) {
+        return { lat: -41.131, lng: -71.325 };
+    }
+    return null;
+}
+
 // Modal y Mapa de Sede con Google Maps & Cómo llegar
-window.verMapaDeSede = function(nombre, calle, numero, localidad) {
+window.verMapaDeSede = function(nombre, calle, numero, localidad, lat, lng) {
     const modalEl = document.getElementById('modalVerSedeMapa');
     if (!modalEl) return;
 
@@ -17,7 +38,7 @@ window.verMapaDeSede = function(nombre, calle, numero, localidad) {
 
     const dirPartes = [calle, numero].filter(Boolean).join(' ');
     const dirCompleta = [dirPartes, localidad].filter(Boolean).join(', ') || nombre;
-    const busquedaGoogle = [nombre, dirPartes, localidad, 'Argentina'].filter(Boolean).join(', ');
+    const coords = resolverCoordenadasSede(nombre, calle, numero, localidad, lat, lng);
 
     const elNombre = document.getElementById('modal-sede-mapa-nombre');
     const elDir = document.getElementById('modal-sede-mapa-direccion');
@@ -25,13 +46,24 @@ window.verMapaDeSede = function(nombre, calle, numero, localidad) {
     if (elDir) elDir.textContent = dirCompleta;
 
     const iframe = document.getElementById('modal-sede-mapa-iframe');
-    if (iframe) {
-        iframe.src = `https://maps.google.com/maps?q=${encodeURIComponent(busquedaGoogle)}&t=&z=16&ie=UTF8&iwloc=&output=embed`;
+    let embedUrl = '';
+    let urlDestino = '';
+
+    if (coords) {
+        // Coordenadas exactas garantizan el PIN rojo en Google Maps
+        embedUrl = `https://maps.google.com/maps?q=${coords.lat},${coords.lng}&hl=es&z=17&output=embed`;
+        urlDestino = `${coords.lat},${coords.lng}`;
+    } else {
+        const busquedaGoogle = [calle, numero, localidad, 'Argentina'].filter(Boolean).join(', ');
+        embedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(busquedaGoogle)}&hl=es&z=17&output=embed`;
+        urlDestino = encodeURIComponent(busquedaGoogle);
     }
+
+    if (iframe) iframe.src = embedUrl;
 
     const btnComoLlegar = document.getElementById('modal-sede-mapa-btn-comollegar');
     if (btnComoLlegar) {
-        btnComoLlegar.href = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(busquedaGoogle)}`;
+        btnComoLlegar.href = `https://www.google.com/maps/dir/?api=1&destination=${urlDestino}`;
     }
 
     const bsModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
@@ -44,7 +76,9 @@ window.abrirModalSedeDesdeBtn = function(btn) {
     const calle = decodeURIComponent(btn.getAttribute('data-calle') || '');
     const numero = decodeURIComponent(btn.getAttribute('data-numero') || '');
     const localidad = decodeURIComponent(btn.getAttribute('data-localidad') || '');
-    verMapaDeSede(nombre, calle, numero, localidad);
+    const lat = btn.getAttribute('data-lat') || '';
+    const lng = btn.getAttribute('data-lng') || '';
+    verMapaDeSede(nombre, calle, numero, localidad, lat, lng);
 };
 
 // Helper: Avatar por defecto según género
@@ -94,19 +128,46 @@ document.addEventListener('DOMContentLoaded', () => {
     // Variable global para usar en la vista
     let user = JSON.parse(userJson);
 
-    // Consultar al servidor por los datos MÁS RECIENTES (incluyendo el rol actualizado)
-    fetch('backend/api/me.php')
+    // Pintar UI inmediatamente con datos locales para evitar parpadeos
+    if (document.getElementById('user-name-display')) {
+        document.getElementById('user-name-display').textContent = user.nombre || 'Usuario';
+    }
+    if (document.getElementById('user-role-display')) {
+        document.getElementById('user-role-display').textContent = (user.rol || 'paciente').toUpperCase();
+    }
+    if (user.rol === 'superadmin' || user.rol === 'admin' || user.rol === 'recepcionista') {
+        const adminElements = document.querySelectorAll('.admin-only');
+        adminElements.forEach(el => el.classList.remove('d-none'));
+    }
+
+    // Consultar al servidor por los datos MÁS RECIENTES (enviando headers para reautenticar si expiró la cookie)
+    fetch('backend/api/me.php', {
+        headers: {
+            'X-Firebase-UID': user.firebase_uid || '',
+            'X-User-Email': user.email || ''
+        }
+    })
         .then(res => {
-            if(!res.ok) throw new Error('Sesión inválida');
+            if(!res.ok) throw new Error('Sesión no sincronizada');
             return res.json();
         })
         .then(data => {
-            user = data.user;
-            // Actualizar localStorage con el nuevo rol
-            localStorage.setItem('user', JSON.stringify(user));
-            
-            // Setear datos en la UI
-            document.getElementById('user-name-display').textContent = user.nombre;
+            if (data && data.user) {
+                user = data.user;
+                localStorage.setItem('user', JSON.stringify(user));
+                
+                if (document.getElementById('user-name-display')) {
+                    document.getElementById('user-name-display').textContent = user.nombre;
+                }
+                if (document.getElementById('user-role-display')) {
+                    document.getElementById('user-role-display').textContent = user.rol.toUpperCase();
+                }
+
+                if (user.rol === 'superadmin' || user.rol === 'admin' || user.rol === 'recepcionista') {
+                    const adminElements = document.querySelectorAll('.admin-only');
+                    adminElements.forEach(el => el.classList.remove('d-none'));
+                }
+            }
 
             // Revisar si hay un turno pendiente tras iniciar sesión
             const turnoPendiente = localStorage.getItem('turno_pendiente');
@@ -149,21 +210,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     cargarMisTurnos();
                 });
             }
-
-
-            
-            document.getElementById('user-role-display').textContent = user.rol.toUpperCase();
-
-            // Mostrar menús restringidos según el rol real de la BD
-            if(user.rol === 'superadmin' || user.rol === 'admin' || user.rol === 'recepcionista') {
-                const adminElements = document.querySelectorAll('.admin-only');
-                adminElements.forEach(el => el.classList.remove('d-none'));
-            }
         })
-        .catch(() => {
-            // Si la sesión en PHP expiró, forzamos logout
-            localStorage.removeItem('user');
-            window.location.href = 'login.php';
+        .catch((err) => {
+            // No desloguear si ya tenemos usuario en localStorage
+            console.warn('Sesión offline o temporalmente no sincronizada con el backend:', err);
         });
 
     const menuDashboard = document.getElementById('menu-dashboard');
@@ -1065,6 +1115,8 @@ function renderMedicos(medicos) {
                         data-calle="${encodeURIComponent(h.unidad_calle || '')}" 
                         data-numero="${encodeURIComponent(h.unidad_numero || '')}" 
                         data-localidad="${encodeURIComponent(h.unidad_localidad || '')}" 
+                        data-lat="${h.unidad_latitud || ''}" 
+                        data-lng="${h.unidad_longitud || ''}" 
                         onclick="abrirModalSedeDesdeBtn(this)" 
                         title="Ver en Google Maps"><i class="bi bi-geo-alt-fill text-danger me-1"></i>${h.unidad_nombre}</button>` 
                     : '';
@@ -1477,7 +1529,7 @@ function renderSedes(sedes) {
                 <td>${dir}</td>
                 <td>${s.localidad || '—'}</td>
                 <td class="text-end">
-                    <button class="btn btn-sm btn-outline-info me-1" onclick="verMapaDeSede('${encodeURIComponent(s.nombre)}', '${encodeURIComponent(s.calle || '')}', '${encodeURIComponent(s.numero || '')}', '${encodeURIComponent(s.localidad || '')}')" title="Ver en Google Maps y Cómo llegar">
+                    <button class="btn btn-sm btn-outline-info me-1" onclick="verMapaDeSede('${encodeURIComponent(s.nombre)}', '${encodeURIComponent(s.calle || '')}', '${encodeURIComponent(s.numero || '')}', '${encodeURIComponent(s.localidad || '')}', '${s.latitud || ''}', '${s.longitud || ''}')" title="Ver en Google Maps y Cómo llegar">
                         <i class="bi bi-geo-alt-fill text-danger"></i>
                     </button>
                     <button class="btn btn-sm btn-outline-primary me-1" onclick="abrirModalSede(${s.id})" title="Editar Sede">
@@ -1501,6 +1553,11 @@ function abrirModalSede(id) {
     document.getElementById('sede-numero').value = sede ? (sede.numero || '') : '';
     document.getElementById('sede-localidad').value = sede ? (sede.localidad || '') : '';
     
+    const inputLat = document.getElementById('sede-latitud');
+    const inputLng = document.getElementById('sede-longitud');
+    if (inputLat) inputLat.value = sede ? (sede.latitud || '') : '';
+    if (inputLng) inputLng.value = sede ? (sede.longitud || '') : '';
+
     // Limpiar buscador autocompletar
     const autoInput = document.getElementById('sede-autocomplete-input');
     if (autoInput) autoInput.value = '';
@@ -1525,13 +1582,27 @@ window.actualizarPreviewMapaModalSede = function() {
     const calle = (document.getElementById('sede-calle')?.value || '').trim();
     const numero = (document.getElementById('sede-numero')?.value || '').trim();
     const localidad = (document.getElementById('sede-localidad')?.value || '').trim() || 'San Carlos de Bariloche';
+    const lat = document.getElementById('sede-latitud')?.value || '';
+    const lng = document.getElementById('sede-longitud')?.value || '';
 
     const dirPartes = [calle, numero].filter(Boolean).join(' ');
-    if (dirPartes || nombre) {
-        const busqueda = [nombre, dirPartes, localidad, 'Argentina'].filter(Boolean).join(', ');
-        iframe.src = `https://maps.google.com/maps?q=${encodeURIComponent(busqueda)}&t=&z=16&ie=UTF8&iwloc=&output=embed`;
+    if (dirPartes || nombre || (lat && lng)) {
+        const coords = resolverCoordenadasSede(nombre, calle, numero, localidad, lat, lng);
+        let embedUrl = '';
+        let urlDestino = '';
+
+        if (coords) {
+            embedUrl = `https://maps.google.com/maps?q=${coords.lat},${coords.lng}&hl=es&z=17&output=embed`;
+            urlDestino = `${coords.lat},${coords.lng}`;
+        } else {
+            const busqueda = [nombre, dirPartes, localidad, 'Argentina'].filter(Boolean).join(', ');
+            embedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(busqueda)}&hl=es&z=17&output=embed`;
+            urlDestino = encodeURIComponent(busqueda);
+        }
+
+        iframe.src = embedUrl;
         if (linkLlegar) {
-            linkLlegar.href = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(busqueda)}`;
+            linkLlegar.href = `https://www.google.com/maps/dir/?api=1&destination=${urlDestino}`;
         }
         wrapper.style.display = 'block';
     } else {
@@ -1614,6 +1685,16 @@ window.actualizarPreviewMapaModalSede = function() {
                                     inputNombre.value = (p.name && p.name !== calle) ? p.name : titulo;
                                 }
 
+                                // Capturar coordenadas de Photon si están disponibles [lon, lat]
+                                if (feat.geometry && feat.geometry.coordinates && feat.geometry.coordinates.length >= 2) {
+                                    const lon = feat.geometry.coordinates[0];
+                                    const lat = feat.geometry.coordinates[1];
+                                    const inLat = document.getElementById('sede-latitud');
+                                    const inLng = document.getElementById('sede-longitud');
+                                    if (inLat) inLat.value = lat;
+                                    if (inLng) inLng.value = lon;
+                                }
+
                                 autoInput.value = titulo + ', ' + ciudad;
                                 autoResults.innerHTML = '';
                                 autoResults.classList.add('d-none');
@@ -1649,7 +1730,9 @@ document.getElementById('form-sede').addEventListener('submit', function(e) {
         nombre: document.getElementById('sede-nombre').value,
         calle: document.getElementById('sede-calle').value,
         numero: document.getElementById('sede-numero').value,
-        localidad: document.getElementById('sede-localidad').value
+        localidad: document.getElementById('sede-localidad').value,
+        latitud: document.getElementById('sede-latitud')?.value || null,
+        longitud: document.getElementById('sede-longitud')?.value || null
     };
 
     fetch('backend/api/crud_unidades.php', {
