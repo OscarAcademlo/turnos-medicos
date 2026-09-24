@@ -316,6 +316,8 @@ window.wizardGoToStep2 = function() {
     wizardCargarObrasSociales();
 };
 
+let listaObrasSocialesCargadas = [];
+
 window.wizardCargarObrasSociales = function() {
     const container = document.getElementById('wizard-os-container');
     container.innerHTML = '<span class="text-muted">Cargando coberturas...</span>';
@@ -325,16 +327,23 @@ window.wizardCargarObrasSociales = function() {
         .then(data => {
             container.innerHTML = '';
             
-            const renderGroupedObras = (lista, esFallback) => {
-                const agrupadas = agruparObrasSociales(lista);
-                groupedObrasSociales = {}; // Reset global map
+            const renderObras = (lista) => {
+                listaObrasSocialesCargadas = lista;
+                container.innerHTML = '';
                 
-                agrupadas.forEach(os => {
-                    if (os.isGroup) {
-                        groupedObrasSociales[os.id] = os.children;
-                    }
+                if (!lista || lista.length === 0) {
+                    container.innerHTML = '<span class="text-muted">No hay obras sociales asignadas a este profesional. Puedes continuar como Particular.</span>';
+                    return;
+                }
+
+                // Ordenar alfabéticamente
+                const ordenadas = [...lista].sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+
+                ordenadas.forEach(os => {
+                    const osId = parseInt(os.obra_social_id || os.id);
+                    const osNombre = os.nombre || 'Obra Social';
+
                     const btn = document.createElement('button');
-                    // Usar nuevo estilo visual
                     btn.className = 'os-card btn btn-light shadow-sm d-flex flex-column justify-content-center align-items-center p-3 text-center';
                     btn.style.width = '180px';
                     btn.style.height = '120px';
@@ -342,9 +351,9 @@ window.wizardCargarObrasSociales = function() {
                     btn.style.border = '1px solid rgba(0,0,0,0.05)';
                     btn.style.transition = 'all 0.3s ease';
                     
-                    btn.innerHTML = `<span class="fw-semibold text-primary mb-2">${os.nombre}</span>
+                    btn.innerHTML = `<span class="fw-semibold text-primary mb-2">${osNombre}</span>
                                      <small class="text-muted" style="font-size: 0.75rem;">
-                                       ${os.isGroup ? os.children.length + ' planes' : 'Seleccionar'}
+                                       Seleccionar
                                      </small>`;
                                      
                     btn.onmouseover = () => {
@@ -368,27 +377,37 @@ window.wizardCargarObrasSociales = function() {
                         btn.style.boxShadow = 'none';
                     };
                     
-                    // Fix ID mapping when rendering specific items
-                    const actualId = esFallback ? os.id : (os.obra_social_id || os.id);
-                    btn.onclick = () => wizardSelectCobertura(actualId, os.nombre, os.isGroup);
+                    btn.onclick = () => wizardSelectCobertura(osId, osNombre);
                     container.appendChild(btn);
                 });
             };
 
-            if(!data[0].obras_sociales || data[0].obras_sociales.length === 0) {
+            const searchInput = document.getElementById('wizard-search-os');
+            if (searchInput) {
+                searchInput.oninput = (e) => {
+                    const q = e.target.value.toLowerCase().trim();
+                    const cards = container.querySelectorAll('.os-card');
+                    cards.forEach(c => {
+                        const txt = c.textContent.toLowerCase();
+                        c.style.display = txt.includes(q) ? 'flex' : 'none';
+                    });
+                };
+            }
+
+            if(!data[0] || !data[0].obras_sociales || data[0].obras_sociales.length === 0) {
                 fetch('backend/api/crud_obras_sociales.php')
                     .then(res => res.json())
                     .then(todas => {
                         if (todas.length === 0) {
-                            container.innerHTML = '<span class="text-muted">No hay obras sociales cargadas en el sistema.</span>';
+                            container.innerHTML = '<span class="text-muted">No hay obras sociales cargadas en el sistema. Puedes continuar como Particular.</span>';
                             return;
                         }
-                        renderGroupedObras(todas, true);
+                        renderObras(todas);
                     });
                 return;
             }
             
-            renderGroupedObras(data[0].obras_sociales, false);
+            renderObras(data[0].obras_sociales);
         })
         .catch(err => {
             console.error("Error cargando coberturas", err);
@@ -396,11 +415,7 @@ window.wizardCargarObrasSociales = function() {
         });
 };
 
-window.wizardSelectCobertura = function(id, nombre, isGroup = false) {
-    wizardData.coberturaId = id;
-    wizardData.coberturaNombre = nombre;
-    wizardData.isGroup = isGroup;
-    
+window.wizardSelectCobertura = function(id, nombre) {
     // Actualizar barra superior
     document.getElementById('wizard-cobertura-nombre').textContent = nombre;
     document.getElementById('wizard-cobertura-nombre').classList.remove('text-muted');
@@ -409,9 +424,17 @@ window.wizardSelectCobertura = function(id, nombre, isGroup = false) {
     document.getElementById('wizard-step-2').classList.add('d-none');
     
     if(id === 'particular') {
+        wizardData.coberturaId = 'particular';
+        wizardData.coberturaNombre = 'Particular';
+        wizardData.planId = null;
+        wizardData.planNombre = null;
         wizardGoToStep4();
     } else {
-        wizardCargarPlanes(id);
+        wizardData.coberturaId = parseInt(id);
+        wizardData.coberturaNombre = nombre;
+        wizardData.planId = null;
+        wizardData.planNombre = null;
+        wizardCargarPlanes(parseInt(id));
     }
 };
 
@@ -424,45 +447,50 @@ window.wizardCargarPlanes = function(osId) {
     const searchPlan = document.getElementById('wizard-search-plan');
     if(searchPlan) searchPlan.value = '';
     
-    const renderPlanes = (planesArray) => {
-        container.innerHTML = '';
-        if(!planesArray || planesArray.length === 0) {
-            document.getElementById('wizard-step-3').classList.add('d-none');
-            wizardGoToStep4();
-            return;
-        }
-        planesArray.forEach(plan => {
-            const btn = document.createElement('button');
-            btn.className = 'plan-card btn btn-outline-primary px-4 py-3 m-2 d-flex align-items-center justify-content-center fw-semibold';
-            btn.style.borderRadius = '50px';
-            btn.style.minWidth = '200px';
-            btn.textContent = plan.nombre;
-            btn.onclick = () => {
-                wizardData.planId = plan.id;
-                // Si es del grupo extraído, el nombre puede ser corto. Usamos plan.nombre
-                wizardData.planNombre = plan.nombre;
-                document.getElementById('wizard-cobertura-nombre').textContent = `${wizardData.coberturaNombre} - ${plan.nombre}`;
-                document.getElementById('wizard-step-3').classList.add('d-none');
-                wizardGoToStep4();
-            };
-            container.appendChild(btn);
-        });
-    };
-
-    // Si osId es un grupo virtual generado por nuestro JS
-    if (wizardData.isGroup && groupedObrasSociales[osId]) {
-        renderPlanes(groupedObrasSociales[osId]);
-        return;
-    }
-
-    // Si no es un grupo virtual, usamos la tabla real de planes_obras_sociales
     fetch(`backend/api/get_planes.php?obra_social_id=${osId}`)
         .then(res => res.json())
         .then(data => {
-            renderPlanes(data);
+            container.innerHTML = '';
+            if(!data || !Array.isArray(data) || data.length === 0) {
+                // Si la obra social no tiene planes específicos, continuar directamente a días
+                wizardData.planId = null;
+                wizardData.planNombre = null;
+                document.getElementById('wizard-step-3').classList.add('d-none');
+                wizardGoToStep4();
+                return;
+            }
+
+            if (searchPlan) {
+                searchPlan.oninput = (e) => {
+                    const q = e.target.value.toLowerCase().trim();
+                    const cards = container.querySelectorAll('.plan-card');
+                    cards.forEach(c => {
+                        const txt = c.textContent.toLowerCase();
+                        c.style.display = txt.includes(q) ? 'inline-flex' : 'none';
+                    });
+                };
+            }
+
+            data.forEach(plan => {
+                const btn = document.createElement('button');
+                btn.className = 'plan-card btn btn-outline-primary px-4 py-3 m-2 d-inline-flex align-items-center justify-content-center fw-semibold shadow-sm';
+                btn.style.borderRadius = '50px';
+                btn.style.minWidth = '200px';
+                btn.textContent = plan.nombre;
+                btn.onclick = () => {
+                    wizardData.planId = parseInt(plan.id);
+                    wizardData.planNombre = plan.nombre;
+                    document.getElementById('wizard-cobertura-nombre').textContent = `${wizardData.coberturaNombre} - ${plan.nombre}`;
+                    document.getElementById('wizard-step-3').classList.add('d-none');
+                    wizardGoToStep4();
+                };
+                container.appendChild(btn);
+            });
         })
         .catch(err => {
             console.error("Error cargando planes", err);
+            wizardData.planId = null;
+            wizardData.planNombre = null;
             document.getElementById('wizard-step-3').classList.add('d-none');
             wizardGoToStep4();
         });
@@ -786,13 +814,17 @@ document.getElementById('btn-cambiar-cobertura').addEventListener('click', () =>
 
 // Confirmar Turno
 document.getElementById('wizard-btn-confirmar').addEventListener('click', () => {
-    const currentUser = auth.currentUser;
+    const localUser = JSON.parse(localStorage.getItem('user') || 'null');
+    const currentUser = auth.currentUser || localUser;
     
     if (currentUser) {
         const btn = document.getElementById('wizard-btn-confirmar');
         const originalHtml = btn.innerHTML;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Guardando...';
         btn.disabled = true;
+
+        const cobId = (wizardData.coberturaId && wizardData.coberturaId !== 'particular' && !isNaN(parseInt(wizardData.coberturaId))) ? parseInt(wizardData.coberturaId) : null;
+        const plId = (wizardData.planId && !isNaN(parseInt(wizardData.planId))) ? parseInt(wizardData.planId) : null;
 
         fetch('backend/api/save_turno.php', {
             method: 'POST',
@@ -801,12 +833,12 @@ document.getElementById('wizard-btn-confirmar').addEventListener('click', () => 
             body: JSON.stringify({
                 medico_id: wizardData.medicoId,
                 especialidad_id: wizardData.especialidadId,
-                cobertura_id: wizardData.coberturaId === 'particular' ? null : wizardData.coberturaId,
-                plan_id: wizardData.planId || null,
+                cobertura_id: cobId,
+                plan_id: plId,
                 unidad_id: wizardData.unidadId || null,
                 fecha: wizardData.fecha,
                 hora: wizardData.hora,
-                firebase_uid: currentUser ? currentUser.uid : null,
+                firebase_uid: currentUser ? (currentUser.uid || currentUser.firebase_uid || null) : null,
                 email: currentUser ? currentUser.email : null
             })
         })

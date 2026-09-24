@@ -174,6 +174,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (turnoPendiente) {
                 const wizardData = JSON.parse(turnoPendiente);
                 
+                const cobId = (wizardData.coberturaId && wizardData.coberturaId !== 'particular' && !isNaN(parseInt(wizardData.coberturaId))) ? parseInt(wizardData.coberturaId) : null;
+                const plId = (wizardData.planId && !isNaN(parseInt(wizardData.planId))) ? parseInt(wizardData.planId) : null;
+
                 fetch('backend/api/save_turno.php', {
                     method: 'POST',
                     credentials: 'same-origin',
@@ -181,12 +184,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify({
                         medico_id: wizardData.medicoId,
                         especialidad_id: wizardData.especialidadId,
-                        cobertura_id: wizardData.coberturaId === 'particular' ? null : wizardData.coberturaId,
-                        plan_id: wizardData.planId || null,
+                        cobertura_id: cobId,
+                        plan_id: plId,
                         unidad_id: wizardData.unidadId || null,
                         fecha: wizardData.fecha,
                         hora: wizardData.hora,
-                        firebase_uid: user ? user.firebase_uid : null,
+                        firebase_uid: user ? (user.firebase_uid || user.uid || null) : null,
                         email: user ? user.email : null
                     })
                 })
@@ -343,8 +346,10 @@ function cargarMisTurnos() {
     `;
 
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const fuid = user.firebase_uid || '';
-    const fuidParam = fuid ? `?firebase_uid=${encodeURIComponent(fuid)}` : '';
+    const params = new URLSearchParams();
+    if (user.firebase_uid) params.append('firebase_uid', user.firebase_uid);
+    if (user.email) params.append('email', user.email);
+    const fuidParam = params.toString() ? `?${params.toString()}` : '';
 
     fetch(`backend/api/get_mis_turnos.php${fuidParam}`, { credentials: 'same-origin' })
         .then(async res => {

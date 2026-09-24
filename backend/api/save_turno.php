@@ -63,6 +63,27 @@ if(
         $cobertura_id = (isset($data->cobertura_id) && is_numeric($data->cobertura_id)) ? intval($data->cobertura_id) : null;
         $plan_id = (isset($data->plan_id) && is_numeric($data->plan_id)) ? intval($data->plan_id) : null;
         
+        // Si no vino cobertura_id pero vino plan_id, deducir la obra social desde planes_obras_sociales
+        if ($cobertura_id === null && !empty($plan_id)) {
+            $stmt_chk_pl = $db->prepare("SELECT obra_social_id FROM planes_obras_sociales WHERE id = :pid LIMIT 1");
+            $stmt_chk_pl->execute([':pid' => $plan_id]);
+            $found_os = $stmt_chk_pl->fetchColumn();
+            if ($found_os) {
+                $cobertura_id = intval($found_os);
+            }
+        }
+
+        // Si vino texto en cobertura_id (por ejemplo 'Swiss Medical Group' o 'group_Swiss Medical Group')
+        if ($cobertura_id === null && !empty($data->cobertura_id) && $data->cobertura_id !== 'particular') {
+            $raw_cob = str_replace('group_', '', (string)$data->cobertura_id);
+            $stmt_find_os = $db->prepare("SELECT id FROM obras_sociales WHERE nombre LIKE :nom LIMIT 1");
+            $stmt_find_os->execute([':nom' => '%' . trim($raw_cob) . '%']);
+            $f_os = $stmt_find_os->fetchColumn();
+            if ($f_os) {
+                $cobertura_id = intval($f_os);
+            }
+        }
+        
         // Auto-healing: agregar columna unidad_id si no existe
         try {
             $cols = $db->query("SHOW COLUMNS FROM turnos LIKE 'unidad_id'")->fetchAll();
