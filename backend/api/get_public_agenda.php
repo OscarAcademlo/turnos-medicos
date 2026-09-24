@@ -91,7 +91,7 @@ try {
     // 4. Obtener horarios de los médicos filtrados con su sede
     $q_horarios = "
         SELECT h.medico_id, h.dia_semana, h.hora_inicio, h.hora_fin, h.duracion_turno_minutos,
-               h.unidad_id, ua.nombre as unidad_nombre, ua.calle as unidad_calle, ua.numero as unidad_numero
+               h.unidad_id, ua.nombre as unidad_nombre, ua.calle as unidad_calle, ua.numero as unidad_numero, ua.localidad as unidad_localidad
         FROM horarios_medicos h
         LEFT JOIN unidades_atencion ua ON h.unidad_id = ua.id
         WHERE h.medico_id IN ($ids_placeholder)
@@ -101,10 +101,22 @@ try {
     $stmt_horarios->execute($medicos_ids);
     $horarios_raw = $stmt_horarios->fetchAll(PDO::FETCH_ASSOC);
 
-    // 5. Ensamblar los datos
+    // 5. Ensamblar los datos y sanitizar nombres/apellidos
     $resultado = [];
+    $medicosLimpiarBD = [];
+
     foreach ($medicos as $medico) {
         $id = $medico['id'];
+        
+        // Sanitizar apellido y nombre (remover direcciones entre paréntesis)
+        if (strpos($medico['apellido'], '(') !== false) {
+            $medicosLimpiarBD[] = $medico['id'];
+            $medico['apellido'] = trim(preg_replace('/\s*\(.*?\)/u', '', $medico['apellido']));
+            $medico['apellido'] = trim(preg_replace('/\s*–\s*\d+.*$/u', '', $medico['apellido']));
+        }
+        if (strpos($medico['nombre'], '(') !== false) {
+            $medico['nombre'] = trim(preg_replace('/\s*\(.*?\)/u', '', $medico['nombre']));
+        }
         
         $medico['especialidades'] = array_values(array_filter($especialidades_raw, function($e) use ($id) {
             return $e['usuario_id'] == $id;
@@ -121,6 +133,16 @@ try {
         $medico['foto_url'] = $medico['foto_perfil'] ?? null;
 
         $resultado[] = $medico;
+    }
+
+    // Auto-healing silencioso en BD para médicos que tenían paréntesis
+    if (!empty($medicosLimpiarBD)) {
+        try {
+            require_once __DIR__ . '/clean_medicos_sedes.php';
+            if (function_exists('ejecutarLimpiezaMedicosSedes')) {
+                ejecutarLimpiezaMedicosSedes($db);
+            }
+        } catch(Exception $ex) {}
     }
 
     echo json_encode($resultado);

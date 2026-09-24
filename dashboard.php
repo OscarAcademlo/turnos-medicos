@@ -31,7 +31,12 @@
         </a>
         
         <!-- Controles derecha -->
-        <div class="d-flex align-items-center gap-3">
+        <div class="d-flex align-items-center gap-2 gap-md-3">
+            <!-- Botón Ver Vista de Paciente -->
+            <a href="index.php" target="_blank" class="btn btn-sm btn-outline-light rounded-pill px-3 d-inline-flex align-items-center gap-1 shadow-sm" title="Abrir vista de turnos del paciente">
+                <i class="bi bi-eye"></i> <span class="d-none d-sm-inline">Vista de Paciente</span>
+            </a>
+
             <!-- Theme Toggle -->
             <button class="btn btn-sm btn-outline-light rounded-circle" id="theme-toggle">
                 <i class="bi bi-moon-fill"></i>
@@ -44,6 +49,8 @@
                 <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="dropdownUser">
                     <li><h6 class="dropdown-header" id="user-name-display">Cargando...</h6></li>
                     <li><span class="dropdown-item-text badge bg-info text-dark mx-3 mb-2" id="user-role-display">ROL</span></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="index.php" target="_blank"><i class="bi bi-eye me-2 text-primary"></i>Ver Vista de Paciente</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item text-danger" href="#" id="logout-btn"><i class="bi bi-box-arrow-right me-2"></i>Cerrar Sesión</a></li>
                 </ul>
@@ -95,6 +102,11 @@
                         <li class="nav-item admin-only d-none mt-4">
                             <a class="nav-link d-flex align-items-center text-muted" href="#" id="menu-configuracion">
                                 <i class="bi bi-gear me-2"></i> Configuración
+                            </a>
+                        </li>
+                        <li class="nav-item mt-3 pt-2 border-top">
+                            <a class="nav-link d-flex align-items-center text-primary fw-semibold" href="index.php" target="_blank" title="Abrir vista de turnos del paciente">
+                                <i class="bi bi-box-arrow-up-right me-2 text-primary"></i> Ver Vista de Paciente
                             </a>
                         </li>
                     </ul>
@@ -610,7 +622,7 @@
 </div>
 
 <!-- Modal Sede (Crear/Editar) -->
-<div class="modal fade" id="modalSede" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="modalSede" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content rounded-4 border-0 shadow">
       <div class="modal-header border-bottom-0 pb-0">
@@ -620,24 +632,49 @@
       <div class="modal-body p-4">
         <form id="form-sede">
             <input type="hidden" id="sede-id">
+
+            <!-- Buscador con autocompletar inteligente -->
+            <div class="mb-3 position-relative">
+                <label class="form-label fw-semibold text-primary"><i class="bi bi-geo-alt-fill me-1"></i>Buscar Dirección (Autocompletar)</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" class="form-control bg-light border-0" id="sede-autocomplete-input" placeholder="Escribe calle, número o lugar (ej: Pasaje Gutiérrez 980)..." autocomplete="off">
+                    <button class="btn btn-outline-secondary border-0 bg-light" type="button" id="btn-limpiar-autocomplete" title="Limpiar"><i class="bi bi-x-circle"></i></button>
+                </div>
+                <div id="sede-autocomplete-results" class="list-group position-absolute w-100 shadow-lg rounded-3 mt-1 d-none" style="z-index: 1065; max-height: 200px; overflow-y: auto;"></div>
+                <small class="text-muted" style="font-size: 0.78rem;">Escribe una dirección para autocompletar calle, número y ciudad automáticamente.</small>
+            </div>
+
             <div class="mb-3">
-                <label class="form-label fw-semibold">Nombre <span class="text-danger">*</span></label>
-                <input type="text" class="form-control bg-light border-0 rounded-3" id="sede-nombre" placeholder="Ej: Consultorio Central" required>
+                <label class="form-label fw-semibold">Nombre de la Sede <span class="text-danger">*</span></label>
+                <input type="text" class="form-control bg-light border-0 rounded-3" id="sede-nombre" placeholder="Ej: Consultorio Pasaje Gutiérrez o Centro Central" required>
             </div>
             <div class="row g-3 mb-3">
                 <div class="col-8">
                     <label class="form-label fw-semibold">Calle</label>
-                    <input type="text" class="form-control bg-light border-0 rounded-3" id="sede-calle" placeholder="Ej: Av. Corrientes">
+                    <input type="text" class="form-control bg-light border-0 rounded-3" id="sede-calle" placeholder="Ej: Pasaje Gutiérrez" oninput="actualizarPreviewMapaModalSede()">
                 </div>
                 <div class="col-4">
                     <label class="form-label fw-semibold">Número</label>
-                    <input type="text" class="form-control bg-light border-0 rounded-3" id="sede-numero" placeholder="1234">
+                    <input type="text" class="form-control bg-light border-0 rounded-3" id="sede-numero" placeholder="980" oninput="actualizarPreviewMapaModalSede()">
                 </div>
             </div>
-            <div class="mb-4">
-                <label class="form-label fw-semibold">Localidad</label>
-                <input type="text" class="form-control bg-light border-0 rounded-3" id="sede-localidad" placeholder="Ej: San Carlos de Bolívar">
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Ciudad / Localidad</label>
+                <input type="text" class="form-control bg-light border-0 rounded-3" id="sede-localidad" placeholder="Ej: San Carlos de Bariloche" oninput="actualizarPreviewMapaModalSede()">
             </div>
+
+            <!-- Preview mapa en el modal de edición de sede -->
+            <div class="mb-4" id="sede-mapa-preview-wrapper" style="display:none;">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <label class="form-label small fw-semibold text-muted mb-0"><i class="bi bi-map me-1 text-primary"></i>Ubicación en Google Maps</label>
+                    <a href="#" id="sede-preview-link-comollegar" target="_blank" class="small text-decoration-none text-primary fw-semibold"><i class="bi bi-cursor-fill me-1"></i>Cómo llegar</a>
+                </div>
+                <div class="rounded-3 overflow-hidden border" style="height: 170px; background-color: #f8f9fa;">
+                    <iframe id="sede-mapa-preview-iframe" width="100%" height="100%" style="border:0;" loading="lazy"></iframe>
+                </div>
+            </div>
+
             <button type="submit" class="btn btn-primary w-100 rounded-pill py-2 fw-bold">Guardar Sede</button>
         </form>
       </div>
@@ -677,6 +714,42 @@
       </div>
     </div>
   </div>
+</div>
+
+<!-- Modal Ver Mapa de Sede & Cómo llegar -->
+<div class="modal fade" id="modalVerSedeMapa" tabindex="-1" aria-labelledby="modalVerSedeMapaLabel" aria-hidden="true" style="z-index: 1070;">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden bg-white">
+            <div class="modal-header border-bottom-0 pb-1 pt-4 px-4 bg-white">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle p-2 bg-primary-subtle text-primary d-flex align-items-center justify-content-center" style="width:42px; height:42px;">
+                        <i class="bi bi-geo-alt-fill fs-5"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold text-dark mb-0" id="modal-sede-mapa-nombre">Sede</h5>
+                        <small class="text-muted" id="modal-sede-mapa-direccion">Dirección de atención</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-3 p-md-4 bg-white">
+                <div class="rounded-4 overflow-hidden shadow-sm border mb-3" style="height: 350px; background-color: #f1f3f5;">
+                    <iframe id="modal-sede-mapa-iframe" width="100%" height="100%" style="border:0;" loading="lazy" allowfullscreen="" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                </div>
+                <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2 pt-2">
+                    <div class="text-muted small text-center text-sm-start">
+                        <i class="bi bi-info-circle me-1 text-primary"></i>Ubicación en Google Maps. Puedes abrir la ruta directamente en tu GPS.
+                    </div>
+                    <div class="d-flex gap-2 w-100 w-sm-auto justify-content-end">
+                        <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cerrar</button>
+                        <a id="modal-sede-mapa-btn-comollegar" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm d-inline-flex align-items-center justify-content-center gap-2">
+                            <i class="bi bi-cursor-fill"></i> Cómo llegar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>

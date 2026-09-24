@@ -161,6 +161,42 @@
       </div>
     </div>
 
+    <!-- Modal Ver Mapa de Sede & Cómo llegar -->
+    <div class="modal fade" id="modalVerSedeMapa" tabindex="-1" aria-labelledby="modalVerSedeMapaLabel" aria-hidden="true" style="z-index: 1070;">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden bg-white">
+                <div class="modal-header border-bottom-0 pb-1 pt-4 px-4 bg-white">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="rounded-circle p-2 bg-primary-subtle text-primary d-flex align-items-center justify-content-center" style="width:42px; height:42px;">
+                            <i class="bi bi-geo-alt-fill fs-5"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold text-dark mb-0" id="modal-sede-mapa-nombre">Sede</h5>
+                            <small class="text-muted" id="modal-sede-mapa-direccion">Dirección de atención</small>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body p-3 p-md-4 bg-white">
+                    <div class="rounded-4 overflow-hidden shadow-sm border mb-3" style="height: 350px; background-color: #f1f3f5;">
+                        <iframe id="modal-sede-mapa-iframe" width="100%" height="100%" style="border:0;" loading="lazy" allowfullscreen="" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                    </div>
+                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2 pt-2">
+                        <div class="text-muted small text-center text-sm-start">
+                            <i class="bi bi-info-circle me-1 text-primary"></i>Ubicación en Google Maps. Puedes abrir la ruta directamente en tu GPS.
+                        </div>
+                        <div class="d-flex gap-2 w-100 w-sm-auto justify-content-end">
+                            <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cerrar</button>
+                            <a id="modal-sede-mapa-btn-comollegar" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm d-inline-flex align-items-center justify-content-center gap-2">
+                                <i class="bi bi-cursor-fill"></i> Cómo llegar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     

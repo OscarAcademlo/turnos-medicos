@@ -67,7 +67,8 @@ foreach($medicos as &$medico) {
 
     // Horarios
     $q_h = "
-        SELECT h.id, h.dia_semana, h.hora_inicio, h.hora_fin, h.duracion_turno_minutos, h.unidad_id, ua.nombre as unidad_nombre
+        SELECT h.id, h.dia_semana, h.hora_inicio, h.hora_fin, h.duracion_turno_minutos, h.unidad_id, 
+               ua.nombre as unidad_nombre, ua.calle as unidad_calle, ua.numero as unidad_numero, ua.localidad as unidad_localidad
         FROM horarios_medicos h
         LEFT JOIN unidades_atencion ua ON h.unidad_id = ua.id
         WHERE h.medico_id = :id
@@ -77,6 +78,12 @@ foreach($medicos as &$medico) {
     $s_h->bindParam(":id", $medico['id']);
     $s_h->execute();
     $medico['horarios'] = $s_h->fetchAll(PDO::FETCH_ASSOC);
+
+    // Sanitizar apellido
+    if (strpos($medico['apellido'], '(') !== false) {
+        $medico['apellido'] = trim(preg_replace('/\s*\(.*?\)/u', '', $medico['apellido']));
+        $medico['apellido'] = trim(preg_replace('/\s*–\s*\d+.*$/u', '', $medico['apellido']));
+    }
 }
 
 echo json_encode($medicos);

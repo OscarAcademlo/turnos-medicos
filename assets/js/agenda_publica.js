@@ -1,7 +1,51 @@
 let medicosGlobal = [];
 window.medicosGlobal = medicosGlobal;
 
-// Helper: Avatar por defecto según género
+// Helper: Limpiar nombres y apellidos (quitar direcciones o textos entre paréntesis)
+function limpiarNombre(str) {
+    if (!str) return '';
+    return str.replace(/\s*\([^)]*\)/g, '').replace(/\s*–\s*\d+.*$/g, '').trim();
+}
+window.limpiarNombre = limpiarNombre;
+
+// Modal y Mapa de Sede con Google Maps & Cómo llegar
+window.verMapaDeSede = function(nombre, calle, numero, localidad) {
+    const modalEl = document.getElementById('modalVerSedeMapa');
+    if (!modalEl) return;
+
+    nombre = nombre || 'Sede de Atención';
+    calle = calle || '';
+    numero = numero || '';
+    localidad = localidad || 'San Carlos de Bariloche';
+
+    const dirPartes = [calle, numero].filter(Boolean).join(' ');
+    const dirCompleta = [dirPartes, localidad].filter(Boolean).join(', ') || nombre;
+    const busquedaGoogle = [nombre, dirPartes, localidad, 'Argentina'].filter(Boolean).join(', ');
+
+    document.getElementById('modal-sede-mapa-nombre').textContent = nombre;
+    document.getElementById('modal-sede-mapa-direccion').textContent = dirCompleta;
+
+    const iframe = document.getElementById('modal-sede-mapa-iframe');
+    const embedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(busquedaGoogle)}&t=&z=16&ie=UTF8&iwloc=&output=embed`;
+    iframe.src = embedUrl;
+
+    const btnComoLlegar = document.getElementById('modal-sede-mapa-btn-comollegar');
+    if (btnComoLlegar) {
+        btnComoLlegar.href = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(busquedaGoogle)}`;
+    }
+
+    const bsModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+    bsModal.show();
+};
+
+window.abrirModalSedeDesdeBtn = function(btn) {
+    if (!btn) return;
+    const nombre = decodeURIComponent(btn.getAttribute('data-nombre') || '');
+    const calle = decodeURIComponent(btn.getAttribute('data-calle') || '');
+    const numero = decodeURIComponent(btn.getAttribute('data-numero') || '');
+    const localidad = decodeURIComponent(btn.getAttribute('data-localidad') || '');
+    verMapaDeSede(nombre, calle, numero, localidad);
+};
 function obtenerAvatarDefault(nombre, apellido) {
     const texto = `${nombre || ''} ${apellido || ''}`.trim().toLowerCase();
     
@@ -106,15 +150,23 @@ document.addEventListener('DOMContentLoaded', () => {
                             <i class="bi bi-shield-check me-1"></i> Ver Coberturas ${cantCoberturas > 0 ? '(' + cantCoberturas + ')' : ''}
                         </button>
                     `;
-                    
-                    // Horarios (formato 24 hs estricto con Centro de Atención / Sede)
+                                 // Horarios (formato 24 hs estricto con Centro de Atención / Sede clickeable)
                     let horariosHtml = '';
                     if (medico.horarios && medico.horarios.length > 0) {
                         medico.horarios.forEach(h => {
                             const inicio = h.hora_inicio ? h.hora_inicio.substring(0, 5) : '';
                             const fin = h.hora_fin ? h.hora_fin.substring(0, 5) : '';
                             const sedeTxt = h.unidad_nombre 
-                                ? `<span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1" style="font-size:0.72rem; font-weight:600;"><i class="bi bi-geo-alt-fill me-1"></i>${h.unidad_nombre}</span>` 
+                                ? `<button type="button" class="btn btn-link p-0 text-decoration-none badge bg-primary-subtle text-primary border border-primary-subtle ms-1 text-truncate" 
+                                    style="font-size:0.72rem; font-weight:600; cursor:pointer; max-width: 140px; vertical-align: middle;" 
+                                    data-nombre="${encodeURIComponent(h.unidad_nombre || '')}" 
+                                    data-calle="${encodeURIComponent(h.unidad_calle || '')}" 
+                                    data-numero="${encodeURIComponent(h.unidad_numero || '')}" 
+                                    data-localidad="${encodeURIComponent(h.unidad_localidad || '')}"
+                                    onclick="abrirModalSedeDesdeBtn(this)" 
+                                    title="Ver ubicación en Google Maps y cómo llegar">
+                                    <i class="bi bi-geo-alt-fill text-danger me-1"></i>${h.unidad_nombre}
+                                   </button>` 
                                 : '';
                             horariosHtml += `
                                 <div class="small mb-1 d-flex justify-content-between align-items-center py-1 border-bottom border-light-subtle">
@@ -127,7 +179,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
 
                     // Foto del médico o fallback por género
-                    const avatarDefault = obtenerAvatarDefault(medico.nombre, medico.apellido);
+                    const nombreLimpio = limpiarNombre(medico.nombre);
+                    const apellidoLimpio = limpiarNombre(medico.apellido);
+                    const avatarDefault = obtenerAvatarDefault(nombreLimpio, apellidoLimpio);
                     const fotoUrl = (medico.foto_perfil && medico.foto_perfil.trim() !== '') 
                         ? medico.foto_perfil 
                         : ((medico.foto_url && medico.foto_url.trim() !== '') ? medico.foto_url : avatarDefault);
@@ -135,10 +189,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     col.innerHTML = `
                         <div class="card w-100 border-0 shadow-sm glass-card hover-lift" style="border-radius: 1rem; overflow: hidden; transition: transform 0.3s ease, box-shadow 0.3s ease;">
                             <div class="text-center pt-4 pb-2" style="background: rgba(248,249,250,0.5);">
-                                <img src="${fotoUrl}" alt="Dr. ${medico.apellido}" class="rounded-circle shadow-sm border border-3 border-white" style="width: 120px; height: 120px; object-fit: cover;" onerror="this.onerror=null; this.src='${avatarDefault}';">
+                                <img src="${fotoUrl}" alt="Dr. ${apellidoLimpio}" class="rounded-circle shadow-sm border border-3 border-white" style="width: 120px; height: 120px; object-fit: cover;" onerror="this.onerror=null; this.src='${avatarDefault}';">
                             </div>
                             <div class="card-body d-flex flex-column text-center">
-                                <h5 class="card-title fw-bold mb-1">${medico.nombre} ${medico.apellido}</h5>
+                                <h5 class="card-title fw-bold mb-1">${nombreLimpio} ${apellidoLimpio}</h5>
                                 <h6 class="card-subtitle mb-3 text-primary fw-semibold">${especialidadesText}</h6>
                                 ${coberturasBtnHtml}
                                 <div class="bg-light rounded-3 p-2 mb-3 text-start" style="max-height: 140px; overflow-y: auto;">
@@ -164,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
     filterEspecialidad.addEventListener('change', loadAgenda);
     filterCobertura.addEventListener('change', loadAgenda);
 
-    // Carga Inicial
+    // Carga inicial
     loadAgenda();
 });
 
@@ -213,12 +267,14 @@ window.abrirModalCoberturasPaciente = function(medicoId) {
 
     // Si ya tenemos los datos en memoria, mostramos inmediatamente
     if (med) {
-        const avatarDefault = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(med.nombre + ' ' + med.apellido) + '&background=e9ecef&color=6c757d&size=200';
+        const nomLimpio = limpiarNombre(med.nombre);
+        const apeLimpio = limpiarNombre(med.apellido);
+        const avatarDefault = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(nomLimpio + ' ' + apeLimpio) + '&background=e9ecef&color=6c757d&size=200';
         const foto = (med.foto_perfil && med.foto_perfil.trim() !== '') ? med.foto_perfil : (med.foto_url || avatarDefault);
 
         infoContainer.innerHTML = `
             <img src="${foto}" class="rounded-circle shadow-sm mb-2" style="width: 80px; height: 80px; object-fit: cover;" onerror="this.onerror=null; this.src='${avatarDefault}';">
-            <h5 class="fw-bold mb-0">${med.nombre} ${med.apellido}</h5>
+            <h5 class="fw-bold mb-0">${nomLimpio} ${apeLimpio}</h5>
             <small class="text-primary fw-semibold">${(med.especialidades || []).map(e => e.nombre).join(', ') || 'Medicina General'}</small>
         `;
         renderizarListaCoberturasModal(med, listContainer);

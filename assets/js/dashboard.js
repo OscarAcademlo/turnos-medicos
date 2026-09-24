@@ -1,3 +1,52 @@
+// Helper: Limpiar nombres y apellidos (quitar direcciones o textos entre paréntesis)
+function limpiarNombre(str) {
+    if (!str) return '';
+    return str.replace(/\s*\([^)]*\)/g, '').replace(/\s*–\s*\d+.*$/g, '').trim();
+}
+window.limpiarNombre = limpiarNombre;
+
+// Modal y Mapa de Sede con Google Maps & Cómo llegar
+window.verMapaDeSede = function(nombre, calle, numero, localidad) {
+    const modalEl = document.getElementById('modalVerSedeMapa');
+    if (!modalEl) return;
+
+    nombre = nombre || 'Sede de Atención';
+    calle = calle || '';
+    numero = numero || '';
+    localidad = localidad || 'San Carlos de Bariloche';
+
+    const dirPartes = [calle, numero].filter(Boolean).join(' ');
+    const dirCompleta = [dirPartes, localidad].filter(Boolean).join(', ') || nombre;
+    const busquedaGoogle = [nombre, dirPartes, localidad, 'Argentina'].filter(Boolean).join(', ');
+
+    const elNombre = document.getElementById('modal-sede-mapa-nombre');
+    const elDir = document.getElementById('modal-sede-mapa-direccion');
+    if (elNombre) elNombre.textContent = nombre;
+    if (elDir) elDir.textContent = dirCompleta;
+
+    const iframe = document.getElementById('modal-sede-mapa-iframe');
+    if (iframe) {
+        iframe.src = `https://maps.google.com/maps?q=${encodeURIComponent(busquedaGoogle)}&t=&z=16&ie=UTF8&iwloc=&output=embed`;
+    }
+
+    const btnComoLlegar = document.getElementById('modal-sede-mapa-btn-comollegar');
+    if (btnComoLlegar) {
+        btnComoLlegar.href = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(busquedaGoogle)}`;
+    }
+
+    const bsModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+    bsModal.show();
+};
+
+window.abrirModalSedeDesdeBtn = function(btn) {
+    if (!btn) return;
+    const nombre = decodeURIComponent(btn.getAttribute('data-nombre') || '');
+    const calle = decodeURIComponent(btn.getAttribute('data-calle') || '');
+    const numero = decodeURIComponent(btn.getAttribute('data-numero') || '');
+    const localidad = decodeURIComponent(btn.getAttribute('data-localidad') || '');
+    verMapaDeSede(nombre, calle, numero, localidad);
+};
+
 // Helper: Avatar por defecto según género
 function obtenerAvatarDefault(nombre, apellido) {
     const texto = `${nombre || ''} ${apellido || ''}`.trim().toLowerCase();
@@ -1001,14 +1050,24 @@ function renderMedicos(medicos) {
     }
 
     medicos.forEach(med => {
-        const defaultAvatar = obtenerAvatarDefault(med.nombre, med.apellido);
+        const nomLimpio = limpiarNombre(med.nombre);
+        const apeLimpio = limpiarNombre(med.apellido);
+        const defaultAvatar = obtenerAvatarDefault(nomLimpio, apeLimpio);
         const fotoHtml = med.foto_perfil
             ? `<img src="${med.foto_perfil}" class="rounded-circle mb-3 object-fit-cover shadow-sm" width="100" height="100" style="border: 3px solid #e9ecef;" onerror="this.onerror=null;this.src='${defaultAvatar}';">`
             : `<img src="${defaultAvatar}" class="rounded-circle mb-3 object-fit-cover shadow-sm" width="100" height="100" style="border: 3px solid #e9ecef;">`;
         
         const horariosResumen = med.horarios && med.horarios.length > 0
             ? med.horarios.map(h => {
-                const sede = h.unidad_nombre ? ` • <span class="text-primary fw-semibold">${h.unidad_nombre}</span>` : '';
+                const sede = h.unidad_nombre 
+                    ? ` • <button type="button" class="btn btn-link p-0 text-decoration-none text-primary fw-semibold" style="font-size:0.78rem;" 
+                        data-nombre="${encodeURIComponent(h.unidad_nombre || '')}" 
+                        data-calle="${encodeURIComponent(h.unidad_calle || '')}" 
+                        data-numero="${encodeURIComponent(h.unidad_numero || '')}" 
+                        data-localidad="${encodeURIComponent(h.unidad_localidad || '')}" 
+                        onclick="abrirModalSedeDesdeBtn(this)" 
+                        title="Ver en Google Maps"><i class="bi bi-geo-alt-fill text-danger me-1"></i>${h.unidad_nombre}</button>` 
+                    : '';
                 return `<div class="badge bg-light text-dark border me-1 mb-1 p-2 text-start d-block" style="font-size:0.78rem; font-weight:normal;">
                     <i class="bi bi-clock text-primary me-1"></i><strong>${h.dia_semana}:</strong> ${h.hora_inicio.slice(0,5)} a ${h.hora_fin.slice(0,5)} hs${sede}
                 </div>`;
@@ -1022,7 +1081,7 @@ function renderMedicos(medicos) {
                 <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden">
                     <div class="card-body p-4 text-center">
                         ${fotoHtml}
-                        <h5 class="fw-bold mb-1">Dr/a. ${med.nombre} ${med.apellido}</h5>
+                        <h5 class="fw-bold mb-1">Dr/a. ${nomLimpio} ${apeLimpio}</h5>
                         <p class="text-muted small mb-1">${med.especialidad_nombre || 'Sin especialidad'}</p>
                         <p class="text-muted small mb-2">Matrícula: ${med.matricula || 'No especificada'}</p>
                         <div class="mb-3 text-start px-2" style="max-height:130px; overflow-y:auto;">${horariosResumen}</div>
@@ -1049,7 +1108,7 @@ function renderMedicos(medicos) {
 document.getElementById('search-medicos')?.addEventListener('input', (e) => {
     const query = e.target.value.toLowerCase();
     const filtrados = medicosDisponibles.filter(m => {
-        const nombreCompleto = `${m.nombre} ${m.apellido}`.toLowerCase();
+        const nombreCompleto = `${limpiarNombre(m.nombre)} ${limpiarNombre(m.apellido)}`.toLowerCase();
         const especialidad = (m.especialidad_nombre || '').toLowerCase();
         return nombreCompleto.includes(query) || especialidad.includes(query);
     });
@@ -1061,8 +1120,8 @@ function abrirEditMedico(id) {
     if(!med) return;
     
     document.getElementById('edit-medico-id').value = med.id;
-    document.getElementById('edit-medico-nombre').value = med.nombre || '';
-    document.getElementById('edit-medico-apellido').value = med.apellido || '';
+    document.getElementById('edit-medico-nombre').value = limpiarNombre(med.nombre);
+    document.getElementById('edit-medico-apellido').value = limpiarNombre(med.apellido);
     document.getElementById('edit-medico-matricula').value = med.matricula || '';
     document.getElementById('edit-medico-direccion').value = med.direccion || '';
     document.getElementById('edit-medico-biografia').value = med.biografia || '';
@@ -1418,10 +1477,13 @@ function renderSedes(sedes) {
                 <td>${dir}</td>
                 <td>${s.localidad || '—'}</td>
                 <td class="text-end">
-                    <button class="btn btn-sm btn-outline-primary me-1" onclick="abrirModalSede(${s.id})">
+                    <button class="btn btn-sm btn-outline-info me-1" onclick="verMapaDeSede('${encodeURIComponent(s.nombre)}', '${encodeURIComponent(s.calle || '')}', '${encodeURIComponent(s.numero || '')}', '${encodeURIComponent(s.localidad || '')}')" title="Ver en Google Maps y Cómo llegar">
+                        <i class="bi bi-geo-alt-fill text-danger"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick="abrirModalSede(${s.id})" title="Editar Sede">
                         <i class="bi bi-pencil"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="borrarSede(${s.id})">
+                    <button class="btn btn-sm btn-outline-danger" onclick="borrarSede(${s.id})" title="Eliminar Sede">
                         <i class="bi bi-trash"></i>
                     </button>
                 </td>
@@ -1438,8 +1500,144 @@ function abrirModalSede(id) {
     document.getElementById('sede-calle').value = sede ? (sede.calle || '') : '';
     document.getElementById('sede-numero').value = sede ? (sede.numero || '') : '';
     document.getElementById('sede-localidad').value = sede ? (sede.localidad || '') : '';
+    
+    // Limpiar buscador autocompletar
+    const autoInput = document.getElementById('sede-autocomplete-input');
+    if (autoInput) autoInput.value = '';
+    const autoRes = document.getElementById('sede-autocomplete-results');
+    if (autoRes) {
+        autoRes.innerHTML = '';
+        autoRes.classList.add('d-none');
+    }
+
+    actualizarPreviewMapaModalSede();
     new bootstrap.Modal(document.getElementById('modalSede')).show();
 }
+
+// Vista previa dinámica en Google Maps en el modal de sedes
+window.actualizarPreviewMapaModalSede = function() {
+    const wrapper = document.getElementById('sede-mapa-preview-wrapper');
+    const iframe = document.getElementById('sede-mapa-preview-iframe');
+    const linkLlegar = document.getElementById('sede-preview-link-comollegar');
+    if (!wrapper || !iframe) return;
+
+    const nombre = (document.getElementById('sede-nombre')?.value || '').trim();
+    const calle = (document.getElementById('sede-calle')?.value || '').trim();
+    const numero = (document.getElementById('sede-numero')?.value || '').trim();
+    const localidad = (document.getElementById('sede-localidad')?.value || '').trim() || 'San Carlos de Bariloche';
+
+    const dirPartes = [calle, numero].filter(Boolean).join(' ');
+    if (dirPartes || nombre) {
+        const busqueda = [nombre, dirPartes, localidad, 'Argentina'].filter(Boolean).join(', ');
+        iframe.src = `https://maps.google.com/maps?q=${encodeURIComponent(busqueda)}&t=&z=16&ie=UTF8&iwloc=&output=embed`;
+        if (linkLlegar) {
+            linkLlegar.href = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(busqueda)}`;
+        }
+        wrapper.style.display = 'block';
+    } else {
+        wrapper.style.display = 'none';
+        iframe.src = '';
+    }
+};
+
+// Autocompletado inteligente de direcciones (OpenStreetMap / Photon)
+(function initAutocompleteSedes() {
+    let timeoutDebounce = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const autoInput = document.getElementById('sede-autocomplete-input');
+        const autoResults = document.getElementById('sede-autocomplete-results');
+        const btnLimpiar = document.getElementById('btn-limpiar-autocomplete');
+
+        if (!autoInput || !autoResults) return;
+
+        if (btnLimpiar) {
+            btnLimpiar.addEventListener('click', () => {
+                autoInput.value = '';
+                autoResults.innerHTML = '';
+                autoResults.classList.add('d-none');
+                autoInput.focus();
+            });
+        }
+
+        autoInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            clearTimeout(timeoutDebounce);
+
+            if (query.length < 3) {
+                autoResults.innerHTML = '';
+                autoResults.classList.add('d-none');
+                return;
+            }
+
+            timeoutDebounce = setTimeout(() => {
+                autoResults.innerHTML = '<div class="list-group-item small text-muted py-2"><div class="spinner-border spinner-border-sm me-2 text-primary"></div>Buscando sugerencias...</div>';
+                autoResults.classList.remove('d-none');
+
+                fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`)
+                    .then(res => res.json())
+                    .then(data => {
+                        autoResults.innerHTML = '';
+                        if (!data.features || data.features.length === 0) {
+                            autoResults.innerHTML = '<div class="list-group-item small text-muted py-2">No se encontraron resultados exactos. Puedes escribir la calle y número abajo.</div>';
+                            return;
+                        }
+
+                        data.features.forEach(feat => {
+                            const p = feat.properties;
+                            const calle = p.street || p.name || '';
+                            const numero = p.housenumber || '';
+                            const ciudad = p.city || p.town || p.district || p.state || 'San Carlos de Bariloche';
+                            const titulo = [calle, numero].filter(Boolean).join(' ') || p.name || 'Ubicación';
+                            const subtitulo = [p.district, ciudad, p.state, p.country].filter(Boolean).join(', ');
+
+                            const a = document.createElement('a');
+                            a.href = 'javascript:void(0)';
+                            a.className = 'list-group-item list-group-item-action py-2';
+                            a.innerHTML = `
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-geo-alt-fill text-danger me-2 fs-5"></i>
+                                    <div>
+                                        <div class="fw-semibold text-dark small">${titulo}</div>
+                                        <small class="text-muted" style="font-size:0.75rem;">${subtitulo}</small>
+                                    </div>
+                                </div>
+                            `;
+
+                            a.onclick = () => {
+                                document.getElementById('sede-calle').value = calle;
+                                document.getElementById('sede-numero').value = numero;
+                                document.getElementById('sede-localidad').value = ciudad;
+
+                                const inputNombre = document.getElementById('sede-nombre');
+                                if (!inputNombre.value || inputNombre.value.trim() === '') {
+                                    inputNombre.value = (p.name && p.name !== calle) ? p.name : titulo;
+                                }
+
+                                autoInput.value = titulo + ', ' + ciudad;
+                                autoResults.innerHTML = '';
+                                autoResults.classList.add('d-none');
+
+                                actualizarPreviewMapaModalSede();
+                            };
+
+                            autoResults.appendChild(a);
+                        });
+                    })
+                    .catch(() => {
+                        autoResults.innerHTML = '<div class="list-group-item small text-muted py-2">No se pudo autocompletar. Puedes escribir los datos manualmente.</div>';
+                    });
+            }, 300);
+        });
+
+        // Ocultar al hacer clic afuera
+        document.addEventListener('click', (e) => {
+            if (!autoInput.contains(e.target) && !autoResults.contains(e.target)) {
+                autoResults.classList.add('d-none');
+            }
+        });
+    });
+})();
 
 document.getElementById('form-sede').addEventListener('submit', function(e) {
     e.preventDefault();
@@ -1492,8 +1690,10 @@ function abrirHorariosMedico(id) {
     const med = medicosDisponibles.find(m => m.id == id);
     if(!med) return;
 
+    const nomLimpio = limpiarNombre(med.nombre);
+    const apeLimpio = limpiarNombre(med.apellido);
     document.getElementById('horario-medico-id').value = med.id;
-    document.getElementById('horario-medico-nombre-label').textContent = `Dr/a. ${med.nombre} ${med.apellido}`;
+    document.getElementById('horario-medico-nombre-label').textContent = `Dr/a. ${nomLimpio} ${apeLimpio}`;
 
     const container = document.getElementById('horarios-editor-container');
     container.innerHTML = '';

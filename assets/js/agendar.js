@@ -14,6 +14,55 @@ let wizardData = {
     hora: null
 };
 
+// Helper: Limpiar nombres y apellidos (quitar direcciones o textos entre paréntesis)
+function limpiarNombre(str) {
+    if (!str) return '';
+    return str.replace(/\s*\([^)]*\)/g, '').replace(/\s*–\s*\d+.*$/g, '').trim();
+}
+window.limpiarNombre = limpiarNombre;
+
+// Modal y Mapa de Sede con Google Maps & Cómo llegar
+window.verMapaDeSede = function(nombre, calle, numero, localidad) {
+    const modalEl = document.getElementById('modalVerSedeMapa');
+    if (!modalEl) return;
+
+    nombre = nombre || 'Sede de Atención';
+    calle = calle || '';
+    numero = numero || '';
+    localidad = localidad || 'San Carlos de Bariloche';
+
+    const dirPartes = [calle, numero].filter(Boolean).join(' ');
+    const dirCompleta = [dirPartes, localidad].filter(Boolean).join(', ') || nombre;
+    const busquedaGoogle = [nombre, dirPartes, localidad, 'Argentina'].filter(Boolean).join(', ');
+
+    const elNombre = document.getElementById('modal-sede-mapa-nombre');
+    const elDir = document.getElementById('modal-sede-mapa-direccion');
+    if (elNombre) elNombre.textContent = nombre;
+    if (elDir) elDir.textContent = dirCompleta;
+
+    const iframe = document.getElementById('modal-sede-mapa-iframe');
+    if (iframe) {
+        iframe.src = `https://maps.google.com/maps?q=${encodeURIComponent(busquedaGoogle)}&t=&z=16&ie=UTF8&iwloc=&output=embed`;
+    }
+
+    const btnComoLlegar = document.getElementById('modal-sede-mapa-btn-comollegar');
+    if (btnComoLlegar) {
+        btnComoLlegar.href = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(busquedaGoogle)}`;
+    }
+
+    const bsModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+    bsModal.show();
+};
+
+window.abrirModalSedeDesdeBtn = function(btn) {
+    if (!btn) return;
+    const nombre = decodeURIComponent(btn.getAttribute('data-nombre') || '');
+    const calle = decodeURIComponent(btn.getAttribute('data-calle') || '');
+    const numero = decodeURIComponent(btn.getAttribute('data-numero') || '');
+    const localidad = decodeURIComponent(btn.getAttribute('data-localidad') || '');
+    verMapaDeSede(nombre, calle, numero, localidad);
+};
+
 // Helper: Avatar por defecto según género
 function obtenerAvatarDefault(nombre, apellido) {
     const texto = `${nombre || ''} ${apellido || ''}`.trim().toLowerCase();
@@ -127,7 +176,9 @@ function iniciarWizardReserva(medicoId) {
         .then(data => {
             if(data.length > 0) {
                 const med = data[0];
-                const nombreCompleto = med.nombre + ' ' + med.apellido;
+                const nomLimpio = limpiarNombre(med.nombre);
+                const apeLimpio = limpiarNombre(med.apellido);
+                const nombreCompleto = `${nomLimpio} ${apeLimpio}`.trim();
                 const especialidadNombre = med.especialidades && med.especialidades.length > 0 
                     ? med.especialidades.map(e => e.nombre).join(', ') 
                     : 'Medicina General';
@@ -146,7 +197,7 @@ function iniciarWizardReserva(medicoId) {
 
                 const foto = med.foto_perfil || med.foto_url;
                 const avatarContainer = document.getElementById('wizard-avatar-container');
-                const defaultAvatar = obtenerAvatarDefault(med.nombre, med.apellido);
+                const defaultAvatar = obtenerAvatarDefault(nomLimpio, apeLimpio);
                 if (avatarContainer) {
                     if (foto && foto.trim() !== '') {
                         avatarContainer.innerHTML = `<img src="${foto}" alt="${nombreCompleto}" class="w-100 h-100 object-fit-cover" onerror="this.onerror=null;this.src='${defaultAvatar}';">`;
@@ -574,10 +625,18 @@ window.wizardAbrirModalHorarios = function(dateObj) {
 
         if (primerH.unidad_nombre) {
             const dir = [primerH.unidad_calle, primerH.unidad_numero].filter(Boolean).join(' ');
+            const loc = primerH.unidad_localidad || 'San Carlos de Bariloche';
             sedeBanner.innerHTML = `
-                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill fs-6 fw-semibold">
-                    <i class="bi bi-geo-alt-fill me-1"></i> ${primerH.unidad_nombre}${dir ? ' — ' + dir : ''}
-                </span>
+                <button type="button" class="btn btn-link p-0 text-decoration-none badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill fs-6 fw-semibold shadow-sm"
+                    data-nombre="${encodeURIComponent(primerH.unidad_nombre || '')}" 
+                    data-calle="${encodeURIComponent(primerH.unidad_calle || '')}" 
+                    data-numero="${encodeURIComponent(primerH.unidad_numero || '')}" 
+                    data-localidad="${encodeURIComponent(loc)}"
+                    onclick="abrirModalSedeDesdeBtn(this)"
+                    title="Ver ubicación en Google Maps y cómo llegar"
+                    style="cursor:pointer;">
+                    <i class="bi bi-geo-alt-fill text-danger me-1"></i> ${primerH.unidad_nombre}${dir ? ' — ' + dir : ''} <span class="badge bg-primary text-white ms-1" style="font-size:0.68rem;"><i class="bi bi-map me-1"></i>Ver Mapa</span>
+                </button>
             `;
             sedeBanner.classList.remove('d-none');
         } else {
