@@ -553,11 +553,13 @@ let usuariosDisponibles = [];
 let especialidadesDisponibles = [];
 let sedesDisponibles = [];
 
-// Función para cargar usuarios desde la base de datos
+// ==========================================
+// GESTIÓN DE PACIENTES (USUARIOS)
+// ==========================================
 function cargarUsuarios() {
-    const user = JSON.parse(localStorage.getItem('user'));
     const tbody = document.getElementById('tabla-usuarios');
-    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Cargando...</td></tr>';
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>Cargando pacientes...</td></tr>';
 
     fetch('backend/api/get_users.php')
         .then(res => res.json())
@@ -566,62 +568,90 @@ function cargarUsuarios() {
                 usuariosDisponibles = data.usuarios;
                 renderUsuarios(usuariosDisponibles);
             } else {
-                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">${data.message || 'Error al cargar'}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">${data.message || 'Error al cargar pacientes'}</td></tr>`;
             }
         })
         .catch(err => {
-            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Error de conexión</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">Error de conexión al cargar pacientes</td></tr>`;
         });
 }
 
 function renderUsuarios(usuarios) {
-    const user = JSON.parse(localStorage.getItem('user'));
     const tbody = document.getElementById('tabla-usuarios');
+    if (!tbody) return;
     tbody.innerHTML = '';
     
     if(usuarios.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No se encontraron usuarios.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No se encontraron pacientes registrados.</td></tr>';
         return;
     }
 
     usuarios.forEach(u => {
-        // Solo SuperAdmin puede cambiar roles y no a sí mismo
-        const puedeCambiarRol = user.rol === 'superadmin' && u.id !== user.id;
+        const nombreCompleto = `${u.nombre || ''} ${u.apellido || ''}`.trim() || 'Sin Nombre';
+        const inicial = (u.nombre ? u.nombre.charAt(0) : 'P').toUpperCase();
         
-        let rolHtml = '';
-        if(puedeCambiarRol) {
-            rolHtml = `
-                <select class="form-select form-select-sm" style="width: auto;" onchange="cambiarRol(${u.id}, this.value)">
-                    <option value="paciente" ${u.rol==='paciente'?'selected':''}>Paciente</option>
-                    <option value="medico" ${u.rol==='medico'?'selected':''}>Médico</option>
-                    <option value="recepcionista" ${u.rol==='recepcionista'?'selected':''}>Recepcionista</option>
-                    <option value="admin" ${u.rol==='admin'?'selected':''}>Administrador</option>
-                    <option value="superadmin" ${u.rol==='superadmin'?'selected':''}>SuperAdmin</option>
-                </select>
-            `;
-        } else {
-            rolHtml = `<span class="badge bg-secondary">${u.rol.toUpperCase()}</span>`;
+        let fechaNacFmt = '<span class="text-muted small fst-italic">Sin cargar</span>';
+        if (u.fecha_nacimiento) {
+            const parts = u.fecha_nacimiento.split('-');
+            if (parts.length === 3) {
+                fechaNacFmt = `<span class="fw-semibold text-secondary">${parts[2]}/${parts[1]}/${parts[0]}</span>`;
+            } else {
+                fechaNacFmt = u.fecha_nacimiento;
+            }
         }
 
-        const espBadge = u.especialidad_nombre ? `<span class="badge bg-info text-dark ms-2">${u.especialidad_nombre}</span>` : '';
+        const dniHtml = u.dni 
+            ? `<span class="fw-bold text-dark">${u.dni}</span>` 
+            : `<span class="text-muted small fst-italic">Sin DNI</span>`;
+
+        const osHtml = u.obra_social_nombre 
+            ? `<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="bi bi-shield-check me-1"></i>${u.obra_social_nombre}</span>` 
+            : `<span class="badge bg-light text-muted border px-2 py-1">Particular</span>`;
+
+        const planHtml = u.plan_nombre 
+            ? `<span class="badge bg-secondary-subtle text-dark border px-2 py-1">${u.plan_nombre}</span>` 
+            : `<span class="text-muted small">-</span>`;
+
+        let telHtml = '<span class="text-muted small fst-italic">Sin teléfono</span>';
+        if (u.telefono) {
+            const cleanTel = u.telefono.replace(/[^0-9]/g, '');
+            telHtml = `
+                <a href="https://wa.me/${cleanTel}" target="_blank" class="btn btn-sm btn-outline-success rounded-pill px-2 py-1 text-nowrap fw-semibold shadow-sm" title="Contactar por WhatsApp">
+                    <i class="bi bi-whatsapp me-1"></i>${u.telefono}
+                </a>
+            `;
+        }
+
+        const emailHtml = u.email 
+            ? `<span class="text-muted small">${u.email}</span>` 
+            : `<span class="text-muted small fst-italic">-</span>`;
 
         const row = `
             <tr>
                 <td class="ps-4">
                     <div class="d-flex align-items-center">
-                        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px; font-weight: bold;">
-                            ${u.nombre.charAt(0).toUpperCase()}
+                        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3 shadow-sm flex-shrink-0" style="width: 38px; height: 38px; font-weight: 700; font-size: 0.95rem;">
+                            ${inicial}
                         </div>
                         <div>
-                            <div class="fw-bold">${u.nombre} ${espBadge}</div>
-                            <div class="text-muted small">ID: ${u.id}</div>
+                            <div class="fw-bold text-dark">${nombreCompleto}</div>
+                            <div class="text-muted small">ID: #${u.id}</div>
                         </div>
                     </div>
                 </td>
-                <td>${u.email}</td>
-                <td>${rolHtml}</td>
-                <td class="pe-4">
-                    <button class="btn btn-sm btn-outline-danger rounded-circle" onclick="borrarUsuario(${u.id})" title="Eliminar"><i class="bi bi-trash"></i></button>
+                <td>${dniHtml}</td>
+                <td>${fechaNacFmt}</td>
+                <td>${osHtml}</td>
+                <td>${planHtml}</td>
+                <td>${telHtml}</td>
+                <td>${emailHtml}</td>
+                <td class="pe-4 text-end text-nowrap">
+                    <button class="btn btn-sm btn-outline-primary rounded-circle me-1" onclick="abrirEditarUsuario(${u.id})" title="Editar paciente">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger rounded-circle" onclick="borrarUsuario(${u.id})" title="Eliminar paciente">
+                        <i class="bi bi-trash"></i>
+                    </button>
                 </td>
             </tr>
         `;
@@ -630,37 +660,223 @@ function renderUsuarios(usuarios) {
 }
 
 function filtrarUsuarios() {
-    const searchVal = document.getElementById('search-usuarios').value.toLowerCase();
-    const rolVal = document.getElementById('filter-rol-usuarios').value;
+    const searchVal = document.getElementById('search-usuarios')?.value.toLowerCase() || '';
 
     const filtrados = usuariosDisponibles.filter(u => {
-        const matchesSearch = u.nombre.toLowerCase().includes(searchVal) || u.email.toLowerCase().includes(searchVal);
-        let matchesRol = true;
+        const nombreCompleto = `${u.nombre || ''} ${u.apellido || ''}`.toLowerCase();
+        const email = (u.email || '').toLowerCase();
+        const dni = (u.dni || '').toLowerCase();
+        const tel = (u.telefono || '').toLowerCase();
+        const os = (u.obra_social_nombre || '').toLowerCase();
+        const plan = (u.plan_nombre || '').toLowerCase();
         
-        if (rolVal !== 'todos') {
-            if (rolVal.startsWith('esp_')) {
-                const espId = rolVal.split('_')[1];
-                matchesRol = (u.rol === 'medico' && u.especialidad_id == espId);
-            } else if (rolVal === 'medico') {
-                matchesRol = (u.rol === 'medico');
-            } else {
-                matchesRol = (u.rol === rolVal);
-            }
-        }
-        
-        return matchesSearch && matchesRol;
+        return nombreCompleto.includes(searchVal) || 
+               email.includes(searchVal) || 
+               dni.includes(searchVal) || 
+               tel.includes(searchVal) || 
+               os.includes(searchVal) ||
+               plan.includes(searchVal);
     });
 
     renderUsuarios(filtrados);
 }
 
 document.getElementById('search-usuarios')?.addEventListener('input', filtrarUsuarios);
-document.getElementById('filter-rol-usuarios')?.addEventListener('change', filtrarUsuarios);
 
+// Cargar opciones de Obras Sociales en modales de paciente
+function poblarSelectObrasSociales(selectId, selectedId = null, onComplete = null) {
+    const sel = document.getElementById(selectId);
+    if (!sel) return;
+    fetch('backend/api/crud_obras_sociales.php')
+        .then(res => res.json())
+        .then(data => {
+            sel.innerHTML = '<option value="">Particular / Sin Cobertura</option>';
+            if (Array.isArray(data)) {
+                data.forEach(os => {
+                    const isSel = selectedId && (selectedId == os.id) ? 'selected' : '';
+                    sel.innerHTML += `<option value="${os.id}" ${isSel}>${os.nombre}</option>`;
+                });
+            }
+            if (onComplete) onComplete();
+        })
+        .catch(() => {
+            if (onComplete) onComplete();
+        });
+}
+
+// Cargar opciones de Planes según la Obra Social seleccionada
+function actualizarSelectPlanes(osSelectId, planSelectId, selectedPlanId = null) {
+    const osSelect = document.getElementById(osSelectId);
+    const planSelect = document.getElementById(planSelectId);
+    if (!osSelect || !planSelect) return;
+
+    const osId = osSelect.value;
+    if (!osId) {
+        planSelect.innerHTML = '<option value="">Particular / Sin Plan</option>';
+        planSelect.disabled = true;
+        return;
+    }
+
+    planSelect.disabled = true;
+    planSelect.innerHTML = '<option value="">Cargando planes...</option>';
+
+    fetch(`backend/api/get_planes.php?obra_social_id=${osId}`)
+        .then(res => res.json())
+        .then(planes => {
+            planSelect.innerHTML = '<option value="">Sin plan específico</option>';
+            if (Array.isArray(planes) && planes.length > 0) {
+                planes.forEach(p => {
+                    const isSel = selectedPlanId && (selectedPlanId == p.id) ? 'selected' : '';
+                    planSelect.innerHTML += `<option value="${p.id}" ${isSel}>${p.nombre}</option>`;
+                });
+            }
+            planSelect.disabled = false;
+        })
+        .catch(() => {
+            planSelect.innerHTML = '<option value="">Error al cargar planes</option>';
+            planSelect.disabled = false;
+        });
+}
+
+// Eventos de cambio en Obra Social para modales de paciente
+document.getElementById('nuevo-paciente-os')?.addEventListener('change', function() {
+    actualizarSelectPlanes('nuevo-paciente-os', 'nuevo-paciente-plan', null);
+});
+
+document.getElementById('edit-paciente-os')?.addEventListener('change', function() {
+    actualizarSelectPlanes('edit-paciente-os', 'edit-paciente-plan', null);
+});
+
+// Modal Nuevo Paciente: resetear y cargar listas
+const modalCrearPacEl = document.getElementById('modalCrearPaciente');
+if (modalCrearPacEl) {
+    modalCrearPacEl.addEventListener('show.bs.modal', () => {
+        document.getElementById('form-crear-paciente').reset();
+        poblarSelectObrasSociales('nuevo-paciente-os', null, () => {
+            actualizarSelectPlanes('nuevo-paciente-os', 'nuevo-paciente-plan', null);
+        });
+    });
+}
+
+// Formulario Crear Paciente: submit
+document.getElementById('form-crear-paciente')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-guardar-paciente');
+    if (btn) btn.disabled = true;
+
+    const data = {
+        nombre: document.getElementById('nuevo-paciente-nombre').value.trim(),
+        apellido: document.getElementById('nuevo-paciente-apellido').value.trim(),
+        dni: document.getElementById('nuevo-paciente-dni').value.trim(),
+        fecha_nacimiento: document.getElementById('nuevo-paciente-fnac').value || null,
+        telefono: document.getElementById('nuevo-paciente-telefono').value.trim(),
+        email: document.getElementById('nuevo-paciente-email').value.trim(),
+        obra_social_id: document.getElementById('nuevo-paciente-os').value || null,
+        plan_id: document.getElementById('nuevo-paciente-plan').value || null
+    };
+
+    fetch('backend/api/users.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(resp => {
+        if (resp.status === 'success') {
+            alert('Paciente registrado exitosamente.');
+            const modalInstance = bootstrap.Modal.getInstance(document.getElementById('modalCrearPaciente'));
+            if (modalInstance) modalInstance.hide();
+            cargarUsuarios();
+        } else {
+            alert('Error: ' + (resp.message || 'No se pudo guardar el paciente'));
+        }
+    })
+    .catch(err => {
+        alert('Error de conexión al guardar paciente');
+    })
+    .finally(() => {
+        if (btn) btn.disabled = false;
+    });
+});
+
+// Abrir Modal Editar Paciente
+function abrirEditarUsuario(id) {
+    const u = usuariosDisponibles.find(x => x.id == id);
+    if (!u) return;
+
+    document.getElementById('edit-paciente-id').value = u.id;
+    document.getElementById('edit-paciente-nombre').value = u.nombre || '';
+    document.getElementById('edit-paciente-apellido').value = u.apellido || '';
+    document.getElementById('edit-paciente-dni').value = u.dni || '';
+    document.getElementById('edit-paciente-fnac').value = u.fecha_nacimiento || '';
+    document.getElementById('edit-paciente-telefono').value = u.telefono || '';
+    document.getElementById('edit-paciente-email').value = u.email || '';
+
+    poblarSelectObrasSociales('edit-paciente-os', u.obra_social_id, () => {
+        actualizarSelectPlanes('edit-paciente-os', 'edit-paciente-plan', u.plan_id);
+    });
+
+    new bootstrap.Modal(document.getElementById('modalEditarPaciente')).show();
+}
+
+// Formulario Editar Paciente: submit
+document.getElementById('form-editar-paciente')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const id = document.getElementById('edit-paciente-id').value;
+    const data = {
+        id: id,
+        nombre: document.getElementById('edit-paciente-nombre').value.trim(),
+        apellido: document.getElementById('edit-paciente-apellido').value.trim(),
+        dni: document.getElementById('edit-paciente-dni').value.trim(),
+        fecha_nacimiento: document.getElementById('edit-paciente-fnac').value || null,
+        telefono: document.getElementById('edit-paciente-telefono').value.trim(),
+        email: document.getElementById('edit-paciente-email').value.trim(),
+        obra_social_id: document.getElementById('edit-paciente-os').value || null,
+        plan_id: document.getElementById('edit-paciente-plan').value || null
+    };
+
+    fetch('backend/api/users.php', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(resp => {
+        if (resp.status === 'success') {
+            alert('Datos del paciente actualizados exitosamente.');
+            const modalInstance = bootstrap.Modal.getInstance(document.getElementById('modalEditarPaciente'));
+            if (modalInstance) modalInstance.hide();
+            cargarUsuarios();
+        } else {
+            alert('Error: ' + (resp.message || 'No se pudo actualizar el paciente'));
+        }
+    })
+    .catch(err => {
+        alert('Error de conexión al actualizar paciente');
+    });
+});
+
+// Eliminar Paciente
 function borrarUsuario(id) {
-    if(!confirm('¿Estás seguro de eliminar este usuario?')) return;
-    // Falta implementar API de borrar usuario, simulamos por ahora
-    alert("Función eliminar usuario en desarrollo.");
+    const u = usuariosDisponibles.find(x => x.id == id);
+    const nom = u ? `${u.nombre} ${u.apellido || ''}`.trim() : `ID #${id}`;
+    if (!confirm(`¿Estás seguro de eliminar al paciente "${nom}"? Esta acción no se puede deshacer.`)) return;
+
+    fetch('backend/api/users.php', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+    })
+    .then(res => res.json())
+    .then(resp => {
+        if (resp.status === 'success') {
+            alert('Paciente eliminado correctamente.');
+            cargarUsuarios();
+        } else {
+            alert('Error: ' + (resp.message || 'No se pudo eliminar el paciente'));
+        }
+    })
+    .catch(() => alert('Error de conexión al eliminar paciente'));
 }
 
 // ==========================================
@@ -801,23 +1017,33 @@ function crearPersonal() {
 
 function cargarObrasSociales() {
     const tbody = document.getElementById('tabla-obras');
-    tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-muted">Cargando...</td></tr>';
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted">Cargando...</td></tr>';
     
     fetch('backend/api/crud_obras_sociales.php')
         .then(res => res.json())
         .then(data => {
             tbody.innerHTML = '';
-            if(data.length > 0) {
+            if(data && data.length > 0) {
                 let html = '';
                 data.forEach(obra => {
+                    const cantPlanes = parseInt(obra.total_planes || 0);
+                    const badgeClass = cantPlanes > 0 ? 'bg-primary-subtle text-primary border border-primary-subtle' : 'bg-secondary-subtle text-muted';
+                    const badgeText = cantPlanes === 1 ? '1 plan' : `${cantPlanes} planes`;
+
                     html += `
                         <tr>
                             <td class="ps-4 fw-bold text-muted">#${obra.id}</td>
-                            <td>${obra.nombre}</td>
+                            <td class="fw-semibold">${obra.nombre}</td>
+                            <td>
+                                <span class="badge ${badgeClass} rounded-pill px-2.5 py-1">
+                                    <i class="bi bi-layers me-1"></i>${badgeText}
+                                </span>
+                            </td>
                             <td class="pe-4 text-end">
-                                <button class="btn btn-sm btn-outline-info rounded-pill px-3 me-2" onclick="abrirGestionPlanes(${obra.id}, '${obra.nombre.replace(/'/g, "\\'")}')"><i class="bi bi-card-list"></i> Planes</button>
-                                <button class="btn btn-sm btn-outline-primary rounded-circle"><i class="bi bi-pencil"></i></button>
-                                <button class="btn btn-sm btn-outline-danger rounded-circle"><i class="bi bi-trash"></i></button>
+                                <button class="btn btn-sm btn-outline-info rounded-pill px-3 me-1" onclick="abrirGestionPlanes(${obra.id}, '${obra.nombre.replace(/'/g, "\\'")}')"><i class="bi bi-card-list me-1"></i> Planes</button>
+                                <button class="btn btn-sm btn-outline-primary rounded-circle me-1" onclick="editarObraSocial(${obra.id}, '${obra.nombre.replace(/'/g, "\\'")}')" title="Editar"><i class="bi bi-pencil"></i></button>
+                                <button class="btn btn-sm btn-outline-danger rounded-circle" onclick="eliminarObraSocial(${obra.id})" title="Eliminar"><i class="bi bi-trash"></i></button>
                             </td>
                         </tr>
                     `;
@@ -833,12 +1059,45 @@ function cargarObrasSociales() {
                     pageLength: 10
                 });
             } else {
-                tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-muted">No hay obras sociales cargadas.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted">No hay obras sociales cargadas.</td></tr>';
             }
         })
         .catch(err => {
-            tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-danger">Error de conexión</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-danger">Error de conexión</td></tr>';
         });
+}
+
+function editarObraSocial(id, nombreActual) {
+    const nuevoNombre = prompt('Editar nombre de la obra social:', nombreActual);
+    if (!nuevoNombre || nuevoNombre.trim() === '' || nuevoNombre.trim() === nombreActual) return;
+
+    fetch('backend/api/crud_obras_sociales.php', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: id, nombre: nuevoNombre.trim() })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message || 'Obra social actualizada');
+        cargarObrasSociales();
+    })
+    .catch(() => alert('Error de conexión'));
+}
+
+function eliminarObraSocial(id) {
+    if (!confirm('¿Estás seguro de eliminar esta obra social? Se eliminarán también sus planes asociados.')) return;
+
+    fetch('backend/api/crud_obras_sociales.php', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: id })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message || 'Obra social eliminada');
+        cargarObrasSociales();
+    })
+    .catch(() => alert('Error de conexión'));
 }
 
 // --- Lógica del Paciente (Solicitar Turno - UX Rediseñada) ---
@@ -1042,6 +1301,153 @@ if(modalTurno) {
     }
 }
 
+// --- Modal Crear Obra Social ---
+function toggleTipoPlanCreacion() {
+    const radioUnico = document.getElementById('plan_tipo_unico');
+    const isUnico = radioUnico ? radioUnico.checked : true;
+    const cUnico = document.getElementById('container-plan-unico');
+    const cMultiples = document.getElementById('container-planes-multiples');
+    const lista = document.getElementById('lista-inputs-planes');
+
+    if (cUnico && cMultiples) {
+        if (isUnico) {
+            cUnico.classList.remove('d-none');
+            cMultiples.classList.add('d-none');
+        } else {
+            cUnico.classList.add('d-none');
+            cMultiples.classList.remove('d-none');
+            if (lista && lista.children.length === 0) {
+                agregarInputPlanModal('Plan 1');
+                agregarInputPlanModal('Plan 2');
+            }
+        }
+    }
+}
+
+function agregarInputPlanModal(valor = '') {
+    const lista = document.getElementById('lista-inputs-planes');
+    if (!lista) return;
+    const div = document.createElement('div');
+    div.className = 'input-group input-group-sm plan-item-row';
+    div.innerHTML = `
+        <input type="text" class="form-control input-plan-item" placeholder="Nombre del plan (ej: Plan 210, Plan Plata...)" value="${valor ? valor.replace(/"/g, '&quot;') : ''}" required>
+        <button class="btn btn-outline-danger" type="button" onclick="removerFilaPlan(this)" title="Quitar plan">
+            <i class="bi bi-trash"></i>
+        </button>
+    `;
+    lista.appendChild(div);
+}
+
+function removerFilaPlan(btn) {
+    const lista = document.getElementById('lista-inputs-planes');
+    if (!lista) return;
+    if (lista.children.length > 1) {
+        btn.closest('.plan-item-row').remove();
+    } else {
+        alert('Debes incluir al menos un plan o seleccionar Plan Único.');
+    }
+}
+
+const formCrearObra = document.getElementById('form-crear-obra');
+if (formCrearObra) {
+    formCrearObra.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const nombreInput = document.getElementById('nueva-obra-nombre');
+        const nombre = nombreInput ? nombreInput.value.trim() : '';
+        if (!nombre) {
+            alert('Por favor, ingresa el nombre de la obra social.');
+            return;
+        }
+
+        const isUnico = document.getElementById('plan_tipo_unico') ? document.getElementById('plan_tipo_unico').checked : true;
+        const btnSubmit = document.getElementById('btn-guardar-obra');
+        
+        let payload = { nombre: nombre };
+
+        if (isUnico) {
+            const planUnicoInput = document.getElementById('nueva-obra-plan-unico');
+            const planUnicoNombre = planUnicoInput ? planUnicoInput.value.trim() : 'Plan Único';
+            payload.tipo_plan = 'unico';
+            payload.plan_unico_nombre = planUnicoNombre || 'Plan Único';
+        } else {
+            const planInputs = document.querySelectorAll('#lista-inputs-planes .input-plan-item');
+            const planes = [];
+            planInputs.forEach(inp => {
+                const val = inp.value.trim();
+                if (val) planes.push(val);
+            });
+
+            if (planes.length === 0) {
+                alert('Por favor ingresa al menos el nombre de un plan o selecciona Plan Único.');
+                return;
+            }
+
+            payload.tipo_plan = 'multiples';
+            payload.planes = planes;
+        }
+
+        if (btnSubmit) {
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Guardando...';
+        }
+
+        fetch('backend/api/crud_obras_sociales.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.id || (data.message && data.message.includes('exitosamente'))) {
+                // Cerrar modal
+                const modalEl = document.getElementById('modalCrearObra');
+                if (modalEl) {
+                    const modalInst = bootstrap.Modal.getInstance(modalEl);
+                    if (modalInst) modalInst.hide();
+                }
+
+                // Reset form
+                formCrearObra.reset();
+                const planUnico = document.getElementById('nueva-obra-plan-unico');
+                if (planUnico) planUnico.value = 'Plan Único';
+                const lista = document.getElementById('lista-inputs-planes');
+                if (lista) lista.innerHTML = '';
+                toggleTipoPlanCreacion();
+
+                // Recargar tabla
+                cargarObrasSociales();
+            } else {
+                alert(data.message || 'Error al crear la obra social.');
+            }
+        })
+        .catch(err => {
+            console.error('Error al guardar obra social:', err);
+            alert('Error de conexión al guardar obra social.');
+        })
+        .finally(() => {
+            if (btnSubmit) {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = '<i class="bi bi-check-lg me-1"></i> Guardar Obra Social';
+            }
+        });
+    });
+}
+
+const modalCrearObraEl = document.getElementById('modalCrearObra');
+if (modalCrearObraEl) {
+    modalCrearObraEl.addEventListener('show.bs.modal', () => {
+        const form = document.getElementById('form-crear-obra');
+        if (form) form.reset();
+        const radioUnico = document.getElementById('plan_tipo_unico');
+        if (radioUnico) radioUnico.checked = true;
+        const inputUnico = document.getElementById('nueva-obra-plan-unico');
+        if (inputUnico) inputUnico.value = 'Plan Único';
+        const lista = document.getElementById('lista-inputs-planes');
+        if (lista) lista.innerHTML = '';
+        toggleTipoPlanCreacion();
+    });
+}
+
 // --- Gestión de Planes por Obra Social ---
 function abrirGestionPlanes(obraSocialId, obraSocialNombre) {
     document.getElementById('gestion-plan-os-id').value = obraSocialId;
@@ -1097,6 +1503,7 @@ document.getElementById('form-crear-plan').addEventListener('submit', function(e
         if(data.message.includes('exitosamente')) {
             document.getElementById('new-plan-nombre').value = '';
             cargarPlanesAdmin(osId);
+            cargarObrasSociales();
         } else {
             alert(data.message || 'Error al crear plan');
         }
@@ -1119,6 +1526,7 @@ function eliminarPlan(id) {
     .then(data => {
         alert(data.message);
         cargarPlanesAdmin(osId);
+        cargarObrasSociales();
     })
     .catch(() => alert('Error de conexión'));
 }
@@ -1911,10 +2319,11 @@ function generarOpcionesHoras(horaActual, defecto) {
 }
 
 function renderBloqueHorario(container, h) {
+    const selectedSedeId = h && h.unidad_id ? h.unidad_id : (sedesDisponibles.length > 0 ? sedesDisponibles[0].id : '');
     const sedesOpts = sedesDisponibles.map(s => {
         const dir = [s.calle, s.numero].filter(Boolean).join(' ');
         const label = s.nombre + (dir ? ` (${dir})` : '');
-        return `<option value="${s.id}" ${h && h.unidad_id == s.id ? 'selected' : ''}>${label}</option>`;
+        return `<option value="${s.id}" ${selectedSedeId == s.id ? 'selected' : ''}>${label}</option>`;
     }).join('');
 
     const div = document.createElement('div');
@@ -1944,9 +2353,9 @@ function renderBloqueHorario(container, h) {
                 <input type="number" class="form-control form-control-sm hb-duracion" min="10" max="120" step="5" value="${h ? h.duracion_turno_minutos : 30}">
             </div>
             <div class="col-md-3">
-                <label class="form-label small fw-semibold">Centro / Sede</label>
-                <select class="form-select form-select-sm hb-sede">
-                    <option value="">-- Sin sede --</option>
+                <label class="form-label small fw-semibold">Centro / Sede <span class="text-danger">*</span></label>
+                <select class="form-select form-select-sm hb-sede" required>
+                    <option value="" disabled ${!selectedSedeId ? 'selected' : ''}>-- Selecciona Sede --</option>
                     ${sedesOpts}
                 </select>
             </div>
@@ -1968,6 +2377,14 @@ function agregarBloqueHorario() {
 function guardarHorariosMedico() {
     const medicoId = document.getElementById('horario-medico-id').value;
     const bloques = document.querySelectorAll('.horario-bloque');
+
+    for (let i = 0; i < bloques.length; i++) {
+        const sedeVal = bloques[i].querySelector('.hb-sede')?.value;
+        if (!sedeVal) {
+            alert('Atención: Cada bloque de horario debe tener una Sede o Centro de atención seleccionado obligatoriamente.');
+            return;
+        }
+    }
 
     const horarios = Array.from(bloques).map(b => ({
         dia_semana: b.querySelector('.hb-dia').value,
@@ -2017,6 +2434,14 @@ function guardarHorariosMedicoInline() {
     const medicoId = document.getElementById('agenda-admin-medico-id').value;
     const bloques = document.querySelectorAll('#agenda-admin-editor-container .horario-bloque');
     const btn = document.querySelector('#agenda-admin-editor-card button.btn-primary');
+
+    for (let i = 0; i < bloques.length; i++) {
+        const sedeVal = bloques[i].querySelector('.hb-sede')?.value;
+        if (!sedeVal) {
+            alert('Atención: Cada bloque de horario debe tener una Sede o Centro de atención seleccionado obligatoriamente.');
+            return;
+        }
+    }
 
     const horarios = Array.from(bloques).map(b => ({
         dia_semana: b.querySelector('.hb-dia').value,

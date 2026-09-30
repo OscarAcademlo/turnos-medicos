@@ -84,6 +84,18 @@ if(
             }
         }
         
+        // Validar que el médico tenga horarios configurados
+        $stmt_chk_hor = $db->prepare("SELECT COUNT(*) FROM horarios_medicos WHERE medico_id = :med_id");
+        $stmt_chk_hor->execute([':med_id' => $data->medico_id]);
+        if (intval($stmt_chk_hor->fetchColumn()) === 0) {
+            http_response_code(400);
+            echo json_encode(array(
+                "status" => "error",
+                "message" => "No se puede reservar el turno porque el profesional no tiene horarios de atención configurados."
+            ));
+            exit();
+        }
+
         // Auto-healing: agregar columna unidad_id si no existe
         try {
             $cols = $db->query("SHOW COLUMNS FROM turnos LIKE 'unidad_id'")->fetchAll();
@@ -93,16 +105,80 @@ if(
         } catch(Throwable $e) {}
 
         // Determinar unidad_id (sede)
-        $unidad_id = (isset($data->unidad_id) && is_numeric($data->unidad_id)) ? intval($data->unidad_id) : null;
+        $unidad_id = (isset($data->unidad_id) && is_numeric($data->unidad_id) && intval($data->unidad_id) > 0) ? intval($data->unidad_id) : null;
+        
+        // Si no vino unidad_id en la petición, buscar la sede asociada al médico en ese día
+        if ($unidad_id === null && !empty($data->fecha)) {
+            $diasMapEnEs = ['Sunday'=>'Domingo','Monday'=>'Lunes','Tuesday'=>'Martes','Wednesday'=>'Miercoles','Thursday'=>'Jueves','Friday'=>'Viernes','Saturday'=>'Sabado'];
+            $diaNom = $diasMapEnEs[date('l', strtotime($data->fecha))] ?? '';
+            $stmt_un_dia = $db->prepare("SELECT unidad_id FROM horarios_medicos WHERE medico_id = :med_id AND dia_semana LIKE :dia AND unidad_id IS NOT NULL AND unidad_id > 0 LIMIT 1");
+            $stmt_un_dia->execute([':med_id' => $data->medico_id, ':dia' => '%' . substr($diaNom, 0, 4) . '%']);
+            $u_dia = $stmt_un_dia->fetchColumn();
+            if ($u_dia) {
+                $unidad_id = intval($u_dia);
+            }
+        }
+
         if ($unidad_id === null) {
-            // Buscar la unidad_id asociada al médico en ese día o en general
-            $stmt_un = $db->prepare("SELECT unidad_id FROM horarios_medicos WHERE medico_id = :med_id AND unidad_id IS NOT NULL LIMIT 1");
+            // Buscar la unidad_id general asociada al médico
+            $stmt_un = $db->prepare("SELECT unidad_id FROM horarios_medicos WHERE medico_id = :med_id AND unidad_id IS NOT NULL AND unidad_id > 0 LIMIT 1");
             $stmt_un->execute([':med_id' => $data->medico_id]);
             $un_row = $stmt_un->fetch(PDO::FETCH_ASSOC);
             if ($un_row) {
                 $unidad_id = intval($un_row['unidad_id']);
             }
         }
+
+        // Si el médico aún no tenía sede asignada, asignar la primera sede activa del sistema y configurársela al médico
+        if ($unidad_id === null) {
+            $firstSede = $db->query("SELECT id FROM unidades_atencion WHERE activa = 1 ORDER BY id ASC LIMIT 1")->fetchColumn();
+            if ($firstSede) {
+                $unidad_id = intval($firstSede);
+                // Auto-configurar la sede en los horarios de este médico para que quede registrado
+                $stmt_upd_hm = $db->prepare("UPDATE horarios_medicos SET unidad_id = :uid WHERE medico_id = :mid AND (unidad_id IS NULL OR unidad_id = 0)");
+                $stmt_upd_hm->execute([':uid' => $unidad_id, ':mid' => $data->medico_id]);
+            }
+        }
+
+        // Validación estricta: No permitir reservar si no hay sede
+        if ($unidad_id === null || $unidad_id <= 0) {
+            http_response_code(400);
+            echo json_encode(array(
+                "status" => "error",
+                "message" => "No se puede reservar el turno porque no hay una sede de atención configurada para este profesional."
+            ));
+            exit();
+        }
+
+        // Reparación retroactiva silenciosa para turnos previos sin sede (ej: Barcala)
+        try {
+            $db->exec("
+                UPDATE turnos t
+                JOIN horarios_medicos h ON t.medico_id = h.medico_id AND h.unidad_id IS NOT NULL AND h.unidad_id > 0
+                SET t.unidad_id = h.unidad_id
+                WHERE t.unidad_id IS NULL OR t.unidad_id = 0
+            ");
+            if ($unidad_id > 0) {
+                $db->exec("UPDATE turnos SET unidad_id = {$unidad_id} WHERE (unidad_id IS NULL OR unidad_id = 0) AND medico_id = " . intval($data->medico_id));
+            }
+        } catch(Throwable $e) {}
+
+        // Vincular cobertura y plan al perfil del paciente si aún no los tiene
+        try {
+            if ($cobertura_id || $plan_id) {
+                $stmt_upd_pac = $db->prepare("
+                    UPDATE usuarios 
+                    SET obra_social_id = COALESCE(obra_social_id, :os_id),
+                        plan_id = COALESCE(plan_id, :pl_id)
+                    WHERE id = :pac_id
+                ");
+                $stmt_upd_pac->execute([
+                    ':os_id' => $cobertura_id,
+                    ':pl_id' => $plan_id,
+                    ':pac_id' => $paciente_id
+                ]);
+            }
+        } catch(Throwable $e) {}
 
         // Calcular hora_fin acorde a la duración del turno
         $hora_inicio = $data->hora;

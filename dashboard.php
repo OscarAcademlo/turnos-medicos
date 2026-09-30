@@ -147,32 +147,20 @@
                 </div>
             </div>
 
-            <!-- VISTA: GESTIÓN DE USUARIOS -->
+            <!-- VISTA: GESTIÓN DE USUARIOS (PACIENTES) -->
             <div id="content-usuarios" class="d-none">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-3 mb-4 border-bottom">
-                    <h1 class="h2 fw-bold">Gestión de Usuarios</h1>
+                    <div>
+                        <h1 class="h2 fw-bold mb-1">Gestión de Usuarios (Pacientes)</h1>
+                        <p class="text-muted small mb-0">Personas registradas para reservar turnos médicos</p>
+                    </div>
                     <div class="d-flex gap-2 align-items-center flex-wrap">
-                        <div class="input-group" style="width: 250px;">
+                        <div class="input-group" style="width: 280px;">
                             <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                            <input type="text" class="form-control" id="search-usuarios" placeholder="Buscar usuario...">
+                            <input type="text" class="form-control" id="search-usuarios" placeholder="Buscar por nombre, DNI, tel, email...">
                         </div>
-                        <select class="form-select" id="filter-rol-usuarios" style="width: 200px;">
-                            <option value="todos">Todos</option>
-                            <optgroup label="Roles de Sistema">
-                                <option value="admin">Admin</option>
-                                <option value="recepcionista">Recepcionista</option>
-                                <option value="paciente">Paciente</option>
-                            </optgroup>
-                            <optgroup label="Especialidades (Médicos)" id="filter-especialidades-opts">
-                                <option value="medico">Todos los Médicos</option>
-                                <!-- Se cargarán dinámicamente -->
-                            </optgroup>
-                        </select>
-                        <button class="btn btn-outline-secondary shadow-sm rounded-pill" data-bs-toggle="modal" data-bs-target="#modalEspecialidades">
-                            <i class="bi bi-tags me-1"></i> Categorías
-                        </button>
-                        <button class="btn btn-primary shadow-sm rounded-pill" data-bs-toggle="modal" data-bs-target="#modalCrearUsuario">
-                            <i class="bi bi-person-plus me-1"></i> Crear Personal
+                        <button class="btn btn-primary shadow-sm rounded-pill" data-bs-toggle="modal" data-bs-target="#modalCrearPaciente">
+                            <i class="bi bi-person-plus me-1"></i> Nuevo Paciente
                         </button>
                     </div>
                 </div>
@@ -183,15 +171,19 @@
                             <table class="table table-hover align-middle mb-0" id="users-table">
                                 <thead class="table-light">
                                     <tr>
-                                        <th class="ps-4">Usuario</th>
+                                        <th class="ps-4">Paciente</th>
+                                        <th>DNI</th>
+                                        <th>Fecha Nac.</th>
+                                        <th>Cobertura Médica</th>
+                                        <th>Plan</th>
+                                        <th>WhatsApp / Tel.</th>
                                         <th>Email</th>
-                                        <th>Rol Actual</th>
-                                        <th class="pe-4">Acción</th>
+                                        <th class="pe-4 text-end">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tabla-usuarios">
                                     <tr>
-                                        <td colspan="4" class="text-center py-4 text-muted">Cargando usuarios...</td>
+                                        <td colspan="8" class="text-center py-4 text-muted">Cargando pacientes...</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -216,12 +208,13 @@
                                     <tr>
                                         <th class="ps-4">ID</th>
                                         <th>Nombre (Obra Social)</th>
+                                        <th>Planes</th>
                                         <th class="pe-4 text-end">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tabla-obras">
                                     <tr>
-                                        <td colspan="3" class="text-center py-4 text-muted">Cargando obras sociales...</td>
+                                        <td colspan="4" class="text-center py-4 text-muted">Cargando obras sociales...</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -278,9 +271,9 @@
             <div id="content-turnos" class="d-none">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-3 mb-4 border-bottom">
                     <h1 class="h2 fw-bold">Mis Turnos</h1>
-                    <button class="btn btn-primary shadow-sm rounded-pill" data-bs-toggle="modal" data-bs-target="#modalNuevoTurno">
-                        <i class="bi bi-plus-lg me-1"></i> Solicitar Turno
-                    </button>
+                    <a href="agendar.php" class="btn btn-primary shadow-sm rounded-pill">
+                        <i class="bi bi-calendar-plus me-1"></i> Solicitar Turno
+                    </a>
                 </div>
 
                 <div id="mis-turnos-container" class="mt-4">
@@ -482,6 +475,127 @@
   </div>
 </div>
 
+<!-- Modal Crear Paciente (Usuario) -->
+<div class="modal fade" id="modalCrearPaciente" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <div class="modal-header border-bottom-0 pb-0">
+        <h1 class="modal-title fs-5 fw-bold"><i class="bi bi-person-plus text-primary me-2"></i>Nuevo Paciente</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="form-crear-paciente">
+        <div class="modal-body p-4">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-muted">Nombre</label>
+              <input type="text" class="form-control" id="nuevo-paciente-nombre" placeholder="Nombre" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-muted">Apellido</label>
+              <input type="text" class="form-control" id="nuevo-paciente-apellido" placeholder="Apellido" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-muted">DNI</label>
+              <input type="text" class="form-control" id="nuevo-paciente-dni" placeholder="Ej: 38123456" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-muted">Fecha de Nacimiento</label>
+              <input type="date" class="form-control" id="nuevo-paciente-fnac" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-muted"><i class="bi bi-whatsapp text-success me-1"></i>WhatsApp / Teléfono</label>
+              <input type="tel" class="form-control" id="nuevo-paciente-telefono" placeholder="Ej: 2944123456" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-muted">Correo Electrónico (Email)</label>
+              <input type="email" class="form-control" id="nuevo-paciente-email" placeholder="paciente@ejemplo.com" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-muted">Cobertura Médica (Obra Social)</label>
+              <select class="form-select" id="nuevo-paciente-os">
+                <option value="">Particular / Sin Cobertura</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-muted">Plan</label>
+              <select class="form-select" id="nuevo-paciente-plan" disabled>
+                <option value="">Selecciona una obra social...</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
+          <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary rounded-pill px-4" id="btn-guardar-paciente">
+            <i class="bi bi-check-lg me-1"></i> Guardar Paciente
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar Paciente (Usuario) -->
+<div class="modal fade" id="modalEditarPaciente" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <div class="modal-header border-bottom-0 pb-0">
+        <h1 class="modal-title fs-5 fw-bold"><i class="bi bi-pencil-square text-primary me-2"></i>Editar Datos de Paciente</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="form-editar-paciente">
+        <input type="hidden" id="edit-paciente-id">
+        <div class="modal-body p-4">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-muted">Nombre</label>
+              <input type="text" class="form-control" id="edit-paciente-nombre" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-muted">Apellido</label>
+              <input type="text" class="form-control" id="edit-paciente-apellido" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-muted">DNI</label>
+              <input type="text" class="form-control" id="edit-paciente-dni">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-muted">Fecha de Nacimiento</label>
+              <input type="date" class="form-control" id="edit-paciente-fnac">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-muted"><i class="bi bi-whatsapp text-success me-1"></i>WhatsApp / Teléfono</label>
+              <input type="tel" class="form-control" id="edit-paciente-telefono">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-muted">Correo Electrónico (Email)</label>
+              <input type="email" class="form-control" id="edit-paciente-email" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-muted">Cobertura Médica (Obra Social)</label>
+              <select class="form-select" id="edit-paciente-os">
+                <option value="">Particular / Sin Cobertura</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-muted">Plan</label>
+              <select class="form-select" id="edit-paciente-plan">
+                <option value="">Selecciona cobertura...</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
+          <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary rounded-pill px-4" id="btn-actualizar-paciente">
+            <i class="bi bi-check-lg me-1"></i> Guardar Cambios
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <div class="modal fade" id="modalCrearUsuario" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content rounded-4 border-0 shadow">
@@ -518,6 +632,79 @@
   </div>
 </div>
 
+<!-- Modal Crear Obra Social -->
+<div class="modal fade" id="modalCrearObra" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <div class="modal-header border-bottom-0 pb-0">
+        <h1 class="modal-title fs-5 fw-bold"><i class="bi bi-building-add text-primary me-2"></i>Nueva Obra Social</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="form-crear-obra">
+        <div class="modal-body p-4">
+          <div class="mb-4">
+            <label class="form-label fw-bold text-dark mb-1">Nombre de la Obra Social</label>
+            <input type="text" class="form-control form-control-lg rounded-3" id="nueva-obra-nombre" placeholder="Ej: OSDE, Swiss Medical, Galeno..." required autocomplete="off">
+            <div class="form-text">Nombre de la entidad o cobertura médica.</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold text-dark mb-2">Esquema de Planes</label>
+            
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <input type="radio" class="btn-check" name="tipo_plan_creacion" id="plan_tipo_unico" value="unico" checked autocomplete="off" onchange="toggleTipoPlanCreacion()">
+                <label class="btn btn-outline-primary w-100 py-2.5 rounded-3 d-flex flex-column align-items-center justify-content-center text-center h-100" for="plan_tipo_unico">
+                  <i class="bi bi-file-earmark-check fs-4 mb-1"></i>
+                  <span class="fw-bold">Plan Único</span>
+                  <small class="text-muted" style="font-size: 0.75rem;">Para coberturas sin segmentación</small>
+                </label>
+              </div>
+              <div class="col-6">
+                <input type="radio" class="btn-check" name="tipo_plan_creacion" id="plan_tipo_multiples" value="multiples" autocomplete="off" onchange="toggleTipoPlanCreacion()">
+                <label class="btn btn-outline-primary w-100 py-2.5 rounded-3 d-flex flex-column align-items-center justify-content-center text-center h-100" for="plan_tipo_multiples">
+                  <i class="bi bi-collection fs-4 mb-1"></i>
+                  <span class="fw-bold">Varios Planes</span>
+                  <small class="text-muted" style="font-size: 0.75rem;">Agregar múltiples planes</small>
+                </label>
+              </div>
+            </div>
+
+            <!-- Contenedor Plan Único -->
+            <div id="container-plan-unico" class="p-3 bg-light rounded-3 border">
+              <label class="form-label small fw-semibold text-muted mb-1">Nombre del Plan Único</label>
+              <input type="text" class="form-control" id="nueva-obra-plan-unico" value="Plan Único" placeholder="Plan Único">
+              <div class="form-text small">Se creará automáticamente este plan único para la obra social.</div>
+            </div>
+
+            <!-- Contenedor Varios Planes -->
+            <div id="container-planes-multiples" class="d-none">
+              <div class="p-3 bg-light rounded-3 border">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <label class="form-label small fw-semibold text-muted mb-0">Planes a registrar:</label>
+                  <button type="button" class="btn btn-sm btn-outline-primary rounded-pill py-0 px-2.5" onclick="agregarInputPlanModal()">
+                    <i class="bi bi-plus-lg me-1"></i> Agregar otro
+                  </button>
+                </div>
+                <div id="lista-inputs-planes" class="d-flex flex-column gap-2">
+                  <!-- Inputs dinámicos agregados por JS -->
+                </div>
+                <div class="form-text small mt-2">Puedes añadir todos los planes que sean necesarios.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
+          <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary rounded-pill px-4" id="btn-guardar-obra">
+            <i class="bi bi-check-lg me-1"></i> Guardar Obra Social
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Gestión de Planes -->
 <div class="modal fade" id="modalGestionPlanes" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
@@ -534,6 +721,11 @@
             <div class="input-group">
                 <input type="text" class="form-control" id="new-plan-nombre" placeholder="Nombre del nuevo plan" required>
                 <button class="btn btn-primary" type="submit"><i class="bi bi-plus"></i> Añadir Plan</button>
+            </div>
+            <div class="mt-2 d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-0 px-2" style="font-size: 0.8rem;" onclick="document.getElementById('new-plan-nombre').value='Plan Único'; document.getElementById('new-plan-nombre').focus();">
+                    <i class="bi bi-magic me-1"></i> Sugerir "Plan Único"
+                </button>
             </div>
         </form>
 

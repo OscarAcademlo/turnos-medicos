@@ -24,9 +24,16 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 switch ($method) {
     case 'GET':
-        // Leer usuarios
-        $query = "SELECT id, email, nombre, rol, telefono, creado_en FROM usuarios ORDER BY nombre ASC";
-        $stmt = $db->prepare($query);
+        // Leer usuarios (solo pacientes/usuarios comunes, excluyendo médicos ya que tienen su propia sección)
+        $filtroRol = isset($_GET['rol']) ? trim($_GET['rol']) : 'paciente';
+        if ($filtroRol === 'todos') {
+            $query = "SELECT id, email, nombre, apellido, rol, telefono, creado_en FROM usuarios WHERE rol != 'medico' ORDER BY nombre ASC";
+            $stmt = $db->prepare($query);
+        } else {
+            $query = "SELECT id, email, nombre, apellido, rol, telefono, creado_en FROM usuarios WHERE rol = :rol ORDER BY nombre ASC";
+            $stmt = $db->prepare($query);
+            $stmt->bindParam(':rol', $filtroRol);
+        }
         $stmt->execute();
         
         $usuarios = array();
@@ -36,32 +43,140 @@ switch ($method) {
         echo json_encode($usuarios);
         break;
 
-    case 'PUT':
-        // Actualizar rol de un usuario (generalmente lo hace el superadmin)
+    case 'POST':
+        // Crear nuevo paciente desde admin
         $data = json_decode(file_get_contents("php://input"));
-        
-        if (!empty($data->id) && !empty($data->rol)) {
-            // Solo superadmin puede dar rol de superadmin a otro
-            if ($data->rol === 'superadmin' && $_SESSION['rol'] !== 'superadmin') {
-                http_response_code(403);
-                echo json_encode(array("message" => "Solo un superadmin puede crear otro superadmin."));
+        if (!empty($data->nombre) && !empty($data->email)) {
+            $nombre = trim($data->nombre);
+            $apellido = !empty($data->apellido) ? trim($data->apellido) : '';
+            $email = trim($data->email);
+            $dni = !empty($data->dni) ? trim($data->dni) : null;
+            $fecha_nacimiento = !empty($data->fecha_nacimiento) ? trim($data->fecha_nacimiento) : null;
+            $telefono = !empty($data->telefono) ? trim($data->telefono) : null;
+            $obra_social_id = (!empty($data->obra_social_id) && is_numeric($data->obra_social_id)) ? intval($data->obra_social_id) : null;
+            $plan_id = (!empty($data->plan_id) && is_numeric($data->plan_id)) ? intval($data->plan_id) : null;
+            $rol = !empty($data->rol) ? trim($data->rol) : 'paciente';
+            $fuid = 'admin_created_' . time() . '_' . rand(100, 999);
+
+            // Verificar si el email ya existe
+            $chk = $db->prepare("SELECT id FROM usuarios WHERE email = :email");
+            $chk->execute([':email' => $email]);
+            if ($chk->rowCount() > 0) {
+                http_response_code(400);
+                echo json_encode(["message" => "Ya existe un usuario con este correo electrónico."]);
                 exit();
             }
 
-            $query = "UPDATE usuarios SET rol = :rol WHERE id = :id";
+            $query = "INSERT INTO usuarios (firebase_uid, nombre, apellido, email, dni, fecha_nacimiento, telefono, obra_social_id, plan_id, rol)
+                      VALUES (:fuid, :nombre, :apellido, :email, :dni, :fecha_nac, :tel, :os_id, :pl_id, :rol)";
             $stmt = $db->prepare($query);
-            $stmt->bindParam(':rol', $data->rol);
-            $stmt->bindParam(':id', $data->id);
-            
-            if($stmt->execute()) {
-                echo json_encode(array("message" => "Rol actualizado exitosamente."));
+            $stmt->bindParam(':fuid', $fuid);
+            $stmt->bindParam(':nombre', $nombre);
+            $stmt->bindParam(':apellido', $apellido);
+            $stmt->bindParam(':email', $email);
+            $stmt->bindParam(':dni', $dni);
+            $stmt->bindParam(':fecha_nac', $fecha_nacimiento);
+            $stmt->bindParam(':tel', $telefono);
+            $stmt->bindParam(':os_id', $obra_social_id);
+            $stmt->bindParam(':pl_id', $plan_id);
+            $stmt->bindParam(':rol', $rol);
+
+            if ($stmt->execute()) {
+                http_response_code(201);
+                echo json_encode(["message" => "Paciente registrado exitosamente.", "id" => $db->lastInsertId()]);
             } else {
                 http_response_code(503);
-                echo json_encode(array("message" => "Error al actualizar el usuario."));
+                echo json_encode(["message" => "No se pudo registrar el paciente."]);
             }
         } else {
             http_response_code(400);
-            echo json_encode(array("message" => "Datos incompletos. Se requiere ID y Rol."));
+            echo json_encode(["message" => "Nombre y email son requeridos."]);
+        }
+        break;
+
+    case 'PUT':
+        // Actualizar datos del usuario
+        $data = json_decode(file_get_contents("php://input"));
+        
+        if (!empty($data->id)) {
+            // Si solo vino 'rol' (compatibilidad con select inline anterior)
+            if (isset($data->rol) && !isset($data->nombre)) {
+                if ($data->rol === 'superadmin' && $_SESSION['rol'] !== 'superadmin') {
+                    http_response_code(403);
+                    echo json_encode(array("message" => "Solo un superadmin puede crear otro superadmin."));
+                    exit();
+                }
+                $query = "UPDATE usuarios SET rol = :rol WHERE id = :id";
+                $stmt = $db->prepare($query);
+                $stmt->bindParam(':rol', $data->rol);
+                $stmt->bindParam(':id', $data->id);
+                if($stmt->execute()) {
+                    echo json_encode(array("message" => "Rol actualizado exitosamente."));
+                } else {
+                    http_response_code(503);
+                    echo json_encode(array("message" => "Error al actualizar rol."));
+                }
+                break;
+            }
+
+            // Actualización completa de datos del paciente
+            $nombre = trim($data->nombre ?? '');
+            $apellido = trim($data->apellido ?? '');
+            $dni = !empty($data->dni) ? trim($data->dni) : null;
+            $fecha_nacimiento = !empty($data->fecha_nacimiento) ? trim($data->fecha_nacimiento) : null;
+            $telefono = !empty($data->telefono) ? trim($data->telefono) : null;
+            $email = trim($data->email ?? '');
+            $obra_social_id = (!empty($data->obra_social_id) && is_numeric($data->obra_social_id)) ? intval($data->obra_social_id) : null;
+            $plan_id = (!empty($data->plan_id) && is_numeric($data->plan_id)) ? intval($data->plan_id) : null;
+
+            $query = "UPDATE usuarios 
+                      SET nombre = :nombre, 
+                          apellido = :apellido, 
+                          dni = :dni, 
+                          fecha_nacimiento = :fecha_nac, 
+                          telefono = :tel, 
+                          email = :email, 
+                          obra_social_id = :os_id, 
+                          plan_id = :pl_id 
+                      WHERE id = :id";
+            $stmt = $db->prepare($query);
+            $stmt->bindParam(':nombre', $nombre);
+            $stmt->bindParam(':apellido', $apellido);
+            $stmt->bindParam(':dni', $dni);
+            $stmt->bindParam(':fecha_nac', $fecha_nacimiento);
+            $stmt->bindParam(':tel', $telefono);
+            $stmt->bindParam(':email', $email);
+            $stmt->bindParam(':os_id', $obra_social_id);
+            $stmt->bindParam(':pl_id', $plan_id);
+            $stmt->bindParam(':id', $data->id);
+            
+            if($stmt->execute()) {
+                echo json_encode(array("message" => "Datos de usuario actualizados exitosamente."));
+            } else {
+                http_response_code(503);
+                echo json_encode(array("message" => "Error al actualizar datos."));
+            }
+        } else {
+            http_response_code(400);
+            echo json_encode(array("message" => "Se requiere ID de usuario."));
+        }
+        break;
+
+    case 'DELETE':
+        $data = json_decode(file_get_contents("php://input"));
+        $id = $data->id ?? ($_GET['id'] ?? null);
+        if(!empty($id)) {
+            $del = $db->prepare("DELETE FROM usuarios WHERE id = :id AND rol = 'paciente'");
+            $del->bindParam(':id', $id);
+            if ($del->execute()) {
+                echo json_encode(["message" => "Usuario eliminado exitosamente."]);
+            } else {
+                http_response_code(503);
+                echo json_encode(["message" => "No se pudo eliminar el usuario."]);
+            }
+        } else {
+            http_response_code(400);
+            echo json_encode(["message" => "ID de usuario requerido."]);
         }
         break;
 

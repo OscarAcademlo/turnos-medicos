@@ -82,7 +82,11 @@ switch($method) {
                     VALUES (:medico_id, :dia, :inicio, :fin, :duracion, :unidad_id)
                 ");
                 $duracion = $h->duracion_turno_minutos ?? 30;
-                $unidad_id = !empty($h->unidad_id) ? $h->unidad_id : null;
+                $unidad_id = (!empty($h->unidad_id) && is_numeric($h->unidad_id)) ? intval($h->unidad_id) : null;
+                if ($unidad_id === null) {
+                    $firstSede = $db->query("SELECT id FROM unidades_atencion WHERE activa = 1 ORDER BY id ASC LIMIT 1")->fetchColumn();
+                    if ($firstSede) $unidad_id = intval($firstSede);
+                }
                 $ins->bindParam(":medico_id", $data->medico_id);
                 $ins->bindParam(":dia", $h->dia_semana);
                 $ins->bindParam(":inicio", $h->hora_inicio);

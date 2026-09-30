@@ -46,7 +46,9 @@ function handleBackendLogin(user, extraData = {}) {
             apellido: extraData.apellido || "",
             dni: extraData.dni || null,
             fecha_nacimiento: extraData.fecha_nacimiento || null,
-            telefono: extraData.telefono || null
+            telefono: extraData.telefono || null,
+            obra_social_id: extraData.obra_social_id || null,
+            plan_id: extraData.plan_id || null
         })
     })
     .then(response => response.json())
@@ -70,41 +72,55 @@ function handleBackendLogin(user, extraData = {}) {
     });
 }
 
-// Login con Email y Contraseña
-if(loginForm) {
-    loginForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const email = document.getElementById('login-email').value;
-        const password = document.getElementById('login-password').value;
-
-        // Autenticación Híbrida: Primero intentamos en el backend local (para médicos y recepcionistas)
-        fetch(`${API_URL}/db_login.php`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: email, password: password })
-        })
-        .then(response => response.json())
+// Cargar Obras Sociales para el registro de paciente
+const regOsSelect = document.getElementById('reg-obra-social');
+const regPlSelect = document.getElementById('reg-plan');
+if (regOsSelect && regPlSelect) {
+    fetch(`${API_URL}/crud_obras_sociales.php`)
+        .then(res => res.json())
         .then(data => {
-            if (data.status === "success") {
-                // Login local exitoso
-                localStorage.setItem('user', JSON.stringify(data.user));
-                window.location.href = 'dashboard.php';
-            } else if (data.status === "use_firebase") {
-                // El usuario no tiene contraseña local, intentar con Firebase
-                auth.signInWithEmailAndPassword(email, password)
-                    .then((userCredential) => {
-                        handleBackendLogin(userCredential.user);
-                    })
-                    .catch((error) => {
-                        showError('Credenciales inválidas o error: ' + error.message);
-                    });
-            } else {
-                showError(data.message || 'Error al iniciar sesión.');
+            if (data && data.length > 0) {
+                data.forEach(os => {
+                    const opt = document.createElement('option');
+                    opt.value = os.id;
+                    opt.textContent = os.nombre;
+                    regOsSelect.appendChild(opt);
+                });
             }
         })
-        .catch(error => {
-            showError('Ocurrió un error de conexión con el servidor.');
-        });
+        .catch(() => {});
+
+    regOsSelect.addEventListener('change', () => {
+        const osId = regOsSelect.value;
+        regPlSelect.innerHTML = '<option value="">Cargando planes...</option>';
+        regPlSelect.disabled = true;
+
+        if (!osId) {
+            regPlSelect.innerHTML = '<option value="">Particular / Sin plan</option>';
+            return;
+        }
+
+        fetch(`${API_URL}/get_planes.php?obra_social_id=${osId}`)
+            .then(res => res.json())
+            .then(planes => {
+                regPlSelect.innerHTML = '';
+                if (planes && planes.length > 0) {
+                    planes.forEach(p => {
+                        const opt = document.createElement('option');
+                        opt.value = p.id;
+                        opt.textContent = p.nombre;
+                        regPlSelect.appendChild(opt);
+                    });
+                    regPlSelect.disabled = false;
+                } else {
+                    regPlSelect.innerHTML = '<option value="">Plan Único</option>';
+                    regPlSelect.disabled = false;
+                }
+            })
+            .catch(() => {
+                regPlSelect.innerHTML = '<option value="">Plan General</option>';
+                regPlSelect.disabled = false;
+            });
     });
 }
 
@@ -114,12 +130,16 @@ if(registerForm) {
     registerForm.addEventListener('submit', (e) => {
         e.preventDefault();
         
+        const osSelect = document.getElementById('reg-obra-social');
+        const plSelect = document.getElementById('reg-plan');
         const extraData = {
             nombre: document.getElementById('reg-nombre').value,
             apellido: document.getElementById('reg-apellido').value,
             dni: document.getElementById('reg-dni').value,
             fecha_nacimiento: document.getElementById('reg-fecha-nac').value,
-            telefono: document.getElementById('reg-telefono').value
+            telefono: document.getElementById('reg-telefono').value,
+            obra_social_id: osSelect && osSelect.value ? parseInt(osSelect.value) : null,
+            plan_id: plSelect && plSelect.value ? parseInt(plSelect.value) : null
         };
         const email = document.getElementById('reg-email').value;
         const password = document.getElementById('reg-password').value;

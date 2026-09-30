@@ -39,6 +39,22 @@ if(!empty($data->firebase_uid) && !empty($data->email)) {
                 $update_stmt->execute();
             }
             
+            // Actualizar datos del usuario si vinieron datos adicionales y no estaban en la BD
+            $updFields = [];
+            $updParams = [':id' => $row['id']];
+            if (!empty($data->dni)) { $updFields[] = "dni = COALESCE(dni, :dni)"; $updParams[':dni'] = $data->dni; }
+            if (!empty($data->fecha_nacimiento)) { $updFields[] = "fecha_nacimiento = COALESCE(fecha_nacimiento, :fnac)"; $updParams[':fnac'] = $data->fecha_nacimiento; }
+            if (!empty($data->telefono)) { $updFields[] = "telefono = COALESCE(telefono, :tel)"; $updParams[':tel'] = $data->telefono; }
+            if (!empty($data->obra_social_id) && is_numeric($data->obra_social_id)) { $updFields[] = "obra_social_id = COALESCE(obra_social_id, :os_id)"; $updParams[':os_id'] = intval($data->obra_social_id); }
+            if (!empty($data->plan_id) && is_numeric($data->plan_id)) { $updFields[] = "plan_id = COALESCE(plan_id, :pl_id)"; $updParams[':pl_id'] = intval($data->plan_id); }
+            if (!empty($updFields)) {
+                try {
+                    $q_upd_extra = "UPDATE usuarios SET " . implode(", ", $updFields) . " WHERE id = :id";
+                    $s_upd_extra = $db->prepare($q_upd_extra);
+                    $s_upd_extra->execute($updParams);
+                } catch(Throwable $e) {}
+            }
+
             // Iniciar sesión en PHP
             $_SESSION['user_id'] = $row['id'];
             $_SESSION['rol'] = $row['rol'];
@@ -59,9 +75,12 @@ if(!empty($data->firebase_uid) && !empty($data->email)) {
             $dni = !empty($data->dni) ? $data->dni : null;
             $fecha_nacimiento = !empty($data->fecha_nacimiento) ? $data->fecha_nacimiento : null;
             $telefono = !empty($data->telefono) ? $data->telefono : null;
+            $obra_social_id = (!empty($data->obra_social_id) && is_numeric($data->obra_social_id)) ? intval($data->obra_social_id) : null;
+            $plan_id = (!empty($data->plan_id) && is_numeric($data->plan_id)) ? intval($data->plan_id) : null;
 
             // Usuario NO existe, lo registramos por primera vez (como paciente por defecto)
-            $query = "INSERT INTO usuarios (firebase_uid, email, nombre, apellido, dni, fecha_nacimiento, telefono) VALUES (:uid, :email, :nombre, :apellido, :dni, :fecha_nacimiento, :telefono)";
+            $query = "INSERT INTO usuarios (firebase_uid, email, nombre, apellido, dni, fecha_nacimiento, telefono, obra_social_id, plan_id, rol) 
+                      VALUES (:uid, :email, :nombre, :apellido, :dni, :fecha_nacimiento, :telefono, :os_id, :pl_id, 'paciente')";
             $stmt = $db->prepare($query);
             $stmt->bindParam(":uid", $uid);
             $stmt->bindParam(":email", $email);
@@ -70,6 +89,8 @@ if(!empty($data->firebase_uid) && !empty($data->email)) {
             $stmt->bindParam(":dni", $dni);
             $stmt->bindParam(":fecha_nacimiento", $fecha_nacimiento);
             $stmt->bindParam(":telefono", $telefono);
+            $stmt->bindParam(":os_id", $obra_social_id);
+            $stmt->bindParam(":pl_id", $plan_id);
 
             if($stmt->execute()) {
                 $new_id = $db->lastInsertId();

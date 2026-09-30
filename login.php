@@ -88,8 +88,22 @@
                                 </div>
                             </div>
                             <div class="form-floating mb-2">
-                                <input type="tel" class="form-control" id="reg-telefono" placeholder="Teléfono" required>
-                                <label for="reg-telefono">Teléfono</label>
+                                <input type="tel" class="form-control" id="reg-telefono" placeholder="WhatsApp / Teléfono" required>
+                                <label for="reg-telefono"><i class="bi bi-whatsapp text-success me-1"></i>WhatsApp / Teléfono</label>
+                            </div>
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-6 text-start">
+                                    <label class="form-label small text-muted mb-1 ps-1">Cobertura Médica</label>
+                                    <select class="form-select" id="reg-obra-social">
+                                        <option value="">Particular / Sin Obra Social</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 text-start">
+                                    <label class="form-label small text-muted mb-1 ps-1">Plan</label>
+                                    <select class="form-select" id="reg-plan" disabled>
+                                        <option value="">Selecciona cobertura...</option>
+                                    </select>
+                                </div>
                             </div>
                             <div class="form-floating mb-2">
                                 <input type="email" class="form-control" id="reg-email" placeholder="nombre@ejemplo.com" required>

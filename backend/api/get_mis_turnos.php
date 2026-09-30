@@ -57,6 +57,18 @@ try {
     if(empty($cols)) {
         $db->exec("ALTER TABLE turnos ADD COLUMN unidad_id INT NULL");
     }
+
+    // Auto-reparar turnos que hayan quedado sin sede asignada
+    $db->exec("
+        UPDATE turnos t
+        JOIN horarios_medicos h ON t.medico_id = h.medico_id AND h.unidad_id IS NOT NULL AND h.unidad_id > 0
+        SET t.unidad_id = h.unidad_id
+        WHERE t.unidad_id IS NULL OR t.unidad_id = 0
+    ");
+    $firstSedeId = $db->query("SELECT id FROM unidades_atencion WHERE activa = 1 ORDER BY id ASC LIMIT 1")->fetchColumn();
+    if ($firstSedeId) {
+        $db->exec("UPDATE turnos SET unidad_id = " . intval($firstSedeId) . " WHERE unidad_id IS NULL OR unidad_id = 0");
+    }
 } catch(Throwable $e) { /* silencioso */ }
 
 try {
