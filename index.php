@@ -12,6 +12,9 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <!-- Custom CSS -->
     <link href="assets/css/style.css?v=<?php echo filemtime('assets/css/style.css'); ?>" rel="stylesheet">
+    <!-- Select2 CSS & Theme -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
 </head>
 <body class="login-bg min-vh-100 pb-5">
     
@@ -52,7 +55,9 @@
                     <div class="row g-4">
                         <div class="col-md-4">
                             <label class="form-label text-muted small fw-semibold text-uppercase"><i class="bi bi-search me-1"></i> Profesional</label>
-                            <input type="text" id="filter-nombre" class="form-control form-control-lg bg-light border-0 shadow-none" placeholder="Nombre o apellido...">
+                            <select id="filter-nombre" class="form-select form-select-lg bg-light border-0 shadow-none">
+                                <option value="">Todos los profesionales</option>
+                            </select>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label text-muted small fw-semibold text-uppercase"><i class="bi bi-hospital me-1"></i> Especialidad</label>
@@ -135,6 +140,11 @@
     <!-- Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     
+    <!-- jQuery (required for Select2) -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <!-- Select2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
     <!-- Scripts Propios -->
     <script src="assets/js/agenda_publica.js?v=<?php echo filemtime('assets/js/agenda_publica.js'); ?>"></script>
 

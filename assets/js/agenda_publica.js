@@ -122,18 +122,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const filterCobertura = document.getElementById('filter-cobertura');
     const resultsContainer = document.getElementById('results-container');
     
-    // Cargar Especialidades
-    fetch('backend/api/get_especialidades.php')
-        .then(response => response.json())
-        .then(data => {
-            data.forEach(esp => {
-                const option = document.createElement('option');
-                option.value = esp.id;
-                option.textContent = esp.nombre;
-                filterEspecialidad.appendChild(option);
-            });
-        });
-
     // Cargar Coberturas (Obras Sociales)
     fetch('backend/api/crud_obras_sociales.php')
         .then(response => response.json())
@@ -143,6 +131,56 @@ document.addEventListener('DOMContentLoaded', () => {
                 option.value = os.id;
                 option.textContent = os.nombre;
                 filterCobertura.appendChild(option);
+            });
+            // Initialize Select2 after options are loaded
+            $(filterCobertura).select2({
+                theme: 'bootstrap-5',
+                placeholder: 'Todas las coberturas',
+                allowClear: true
+            });
+        });
+
+    // Cargar Profesionales para el select
+    fetch('backend/api/get_public_agenda.php')
+        .then(response => response.json())
+        .then(data => {
+            if(data) {
+                // Remove duplicates in case
+                const unicos = new Map();
+                data.forEach(med => {
+                    if(!unicos.has(med.id)) {
+                        unicos.set(med.id, med);
+                    }
+                });
+                unicos.forEach(med => {
+                    const option = document.createElement('option');
+                    option.value = med.id;
+                    option.textContent = limpiarNombre(med.nombre) + ' ' + limpiarNombre(med.apellido);
+                    filterNombre.appendChild(option);
+                });
+            }
+            // Initialize Select2 after options are loaded
+            $(filterNombre).select2({
+                theme: 'bootstrap-5',
+                placeholder: 'Todos los profesionales',
+                allowClear: true
+            });
+        });
+
+    // Initialize Select2 for especialidades after options are loaded
+    fetch('backend/api/get_especialidades.php')
+        .then(response => response.json())
+        .then(data => {
+            data.forEach(esp => {
+                const option = document.createElement('option');
+                option.value = esp.id;
+                option.textContent = esp.nombre;
+                filterEspecialidad.appendChild(option);
+            });
+            $(filterEspecialidad).select2({
+                theme: 'bootstrap-5',
+                placeholder: 'Todas las especialidades',
+                allowClear: true
             });
         });
 
@@ -155,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>`;
 
         const params = new URLSearchParams();
-        if (filterNombre.value) params.append('nombre', filterNombre.value);
+        if (filterNombre.value) params.append('medico_id', filterNombre.value);
         if (filterEspecialidad.value) params.append('especialidad_id', filterEspecialidad.value);
         if (filterCobertura.value) params.append('obra_social_id', filterCobertura.value);
 
@@ -251,9 +289,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Listeners
-    filterNombre.addEventListener('input', debounce(loadAgenda, 500));
-    filterEspecialidad.addEventListener('change', loadAgenda);
-    filterCobertura.addEventListener('change', loadAgenda);
+    $(filterNombre).on('change', loadAgenda);
+    $(filterEspecialidad).on('change', loadAgenda);
+    $(filterCobertura).on('change', loadAgenda);
 
     // Carga inicial
     loadAgenda();
