@@ -279,6 +279,57 @@ document.addEventListener('DOMContentLoaded', () => {
         menuAgendaAdmin.addEventListener('click', (e) => {
             e.preventDefault();
             mostrarVista(contentAgendaAdmin, menuAgendaAdmin, 'Agenda y Horarios');
+            cargarSedes();
+            
+            // Si el usuario es médico, le mostramos directamente sus horarios
+            if (user.rol === 'medico') {
+                document.getElementById('agenda-admin-selector-container').classList.add('d-none');
+                document.getElementById('agenda-admin-editor-card').classList.remove('d-none');
+                
+                // Asegurarnos de que tenemos los datos del médico
+                fetch('backend/api/get_users.php')
+                    .then(res => res.json())
+                    .then(data => {
+                        const miMedico = (data.usuarios || []).find(m => m.id == user.id);
+                        if (miMedico) cargarHorariosEnEditorInline(miMedico);
+                    });
+            } else {
+                // Si es admin/recepcionista, llenamos el select de profesionales
+                document.getElementById('agenda-admin-selector-container').classList.remove('d-none');
+                document.getElementById('agenda-admin-editor-card').classList.add('d-none');
+                const sel = document.getElementById('agenda-admin-medico-select');
+                sel.innerHTML = '<option value="">Cargando profesionales...</option>';
+                
+                fetch('backend/api/get_users.php')
+                    .then(res => res.json())
+                    .then(data => {
+                        const medicos = (data.usuarios || []).filter(u => u.rol === 'medico');
+                        sel.innerHTML = '<option value="">-- Selecciona un profesional --</option>';
+                        medicos.forEach(m => {
+                            sel.innerHTML += `<option value="${m.id}">${limpiarNombre(m.nombre)} ${limpiarNombre(m.apellido || '')}</option>`;
+                        });
+                        
+                        // Guardamos localmente para buscar los horarios luego
+                        window._medicosParaAgenda = medicos;
+                    });
+            }
+        });
+    }
+
+    // Al seleccionar un médico en el panel de Agenda
+    const selectMedicoAgenda = document.getElementById('agenda-admin-medico-select');
+    if (selectMedicoAgenda) {
+        selectMedicoAgenda.addEventListener('change', function() {
+            if (!this.value) {
+                document.getElementById('agenda-admin-editor-card').classList.add('d-none');
+                return;
+            }
+            const medId = this.value;
+            const med = (window._medicosParaAgenda || []).find(m => m.id == medId);
+            if (med) {
+                document.getElementById('agenda-admin-editor-card').classList.remove('d-none');
+                cargarHorariosEnEditorInline(med);
+            }
         });
     }
 
@@ -1907,4 +1958,70 @@ function guardarHorariosMedico() {
         cargarMedicosAdmin();
     })
     .catch(() => alert('Error al guardar horarios'));
+}
+
+// --- Lógica Inline de Gestión de Agenda ---
+function cargarHorariosEnEditorInline(med) {
+    if (!med) return;
+    
+    document.getElementById('agenda-admin-medico-id').value = med.id;
+    document.getElementById('agenda-admin-medico-nombre').textContent = `Horarios de: Dr/a. ${limpiarNombre(med.nombre)} ${limpiarNombre(med.apellido)}`;
+    
+    const container = document.getElementById('agenda-admin-editor-container');
+    container.innerHTML = '';
+    
+    if(med.horarios && med.horarios.length > 0) {
+        med.horarios.forEach(h => renderBloqueHorario(container, h));
+    } else {
+        renderBloqueHorario(container, null);
+    }
+}
+
+function agregarBloqueHorarioInline() {
+    const container = document.getElementById('agenda-admin-editor-container');
+    renderBloqueHorario(container, null);
+}
+
+function guardarHorariosMedicoInline() {
+    const medicoId = document.getElementById('agenda-admin-medico-id').value;
+    const bloques = document.querySelectorAll('#agenda-admin-editor-container .horario-bloque');
+    const btn = document.querySelector('#agenda-admin-editor-card button.btn-primary');
+
+    const horarios = Array.from(bloques).map(b => ({
+        dia_semana: b.querySelector('.hb-dia').value,
+        hora_inicio: b.querySelector('.hb-inicio').value,
+        hora_fin: b.querySelector('.hb-fin').value,
+        duracion_turno_minutos: parseInt(b.querySelector('.hb-duracion').value) || 30,
+        unidad_id: b.querySelector('.hb-sede').value || null
+    }));
+
+    if(btn) btn.disabled = true;
+
+    fetch('backend/api/crud_horarios_medico.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ medico_id: medicoId, horarios })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        
+        // Refrescar los datos locales para la vista actual
+        if (window._medicosParaAgenda) {
+            const mIndex = window._medicosParaAgenda.findIndex(m => m.id == medicoId);
+            if (mIndex !== -1) {
+                window._medicosParaAgenda[mIndex].horarios = horarios;
+            }
+        }
+        
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (user && user.id == medicoId) {
+            user.horarios = horarios;
+            localStorage.setItem('user', JSON.stringify(user));
+        }
+    })
+    .catch(() => alert('Error al guardar horarios'))
+    .finally(() => {
+        if(btn) btn.disabled = false;
+    });
 }

@@ -233,11 +233,44 @@
             <!-- VISTA: AGENDA ADMIN -->
             <div id="content-agenda-admin" class="d-none">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-3 mb-4 border-bottom">
-                    <h1 class="h2 fw-bold">Gestión de Agenda</h1>
+                    <h1 class="h2 fw-bold">Configuración de Agenda</h1>
                 </div>
-                <div class="alert alert-warning rounded-4 shadow-sm border-0 d-flex align-items-center">
-                    <i class="bi bi-tools fs-4 me-3"></i>
-                    <div>Módulo de configuración de horarios y duración de consultas en desarrollo.</div>
+                
+                <div class="card border-0 shadow-sm rounded-4 mb-4" id="agenda-admin-selector-container">
+                    <div class="card-body p-4">
+                        <label class="form-label fw-bold"><i class="bi bi-person-badge text-primary me-2"></i>Selecciona un Profesional</label>
+                        <select class="form-select form-select-lg" id="agenda-admin-medico-select">
+                            <option value="">Cargando profesionales...</option>
+                        </select>
+                        <div class="form-text mt-2">Elige el médico al que deseas configurarle los días y horarios de atención.</div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm rounded-4 d-none" id="agenda-admin-editor-card">
+                    <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="fw-bold mb-0" id="agenda-admin-medico-nombre">Horarios del Profesional</h5>
+                            <button class="btn btn-outline-primary btn-sm rounded-pill" onclick="agregarBloqueHorarioInline()">
+                                <i class="bi bi-plus-lg me-1"></i> Agregar bloque
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-4">
+                        <p class="text-muted small mb-4">
+                            Puedes asignar diferentes centros de atención a cada bloque de horario. 
+                            <a href="#" onclick="document.getElementById('menu-configuracion').click();" class="text-primary text-decoration-none fw-semibold"><i class="bi bi-geo-alt"></i> Administrar Sedes</a>
+                        </p>
+                        
+                        <!-- Contenedor donde se renderizan los bloques -->
+                        <div id="agenda-admin-editor-container"></div>
+                        
+                        <div class="mt-4 pt-3 border-top text-end">
+                            <input type="hidden" id="agenda-admin-medico-id">
+                            <button type="button" class="btn btn-primary rounded-pill px-4 py-2 fw-bold" onclick="guardarHorariosMedicoInline()">
+                                <i class="bi bi-check-lg me-1"></i> Guardar Cambios
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
