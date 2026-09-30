@@ -5,6 +5,29 @@ function limpiarNombre(str) {
 }
 window.limpiarNombre = limpiarNombre;
 
+// Helper: Nombre completo de un médico (nombre + apellido, sin direcciones)
+function nombreCompletoMedico(m) {
+    return `${limpiarNombre(m.nombre)} ${limpiarNombre(m.apellido || '')}`.trim();
+}
+window.nombreCompletoMedico = nombreCompletoMedico;
+
+// Helper: Inicializar Select2 (con buscador) sobre un <select>
+function initSelect2(selector, opts = {}) {
+    if (!window.jQuery || !$.fn.select2) return;
+    const $el = $(selector);
+    if (!$el.length) return;
+    if ($el.hasClass('select2-hidden-accessible')) $el.select2('destroy');
+    $el.select2(Object.assign({
+        theme: 'bootstrap-5',
+        width: '100%',
+        language: {
+            noResults: () => 'Sin resultados',
+            searching: () => 'Buscando...'
+        }
+    }, opts));
+}
+window.initSelect2 = initSelect2;
+
 // Helper: Resolver coordenadas exactas de sedes conocidas o pasadas
 function resolverCoordenadasSede(nombre, calle, numero, localidad, lat, lng) {
     if (lat && lng && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng))) {
@@ -280,58 +303,60 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             mostrarVista(contentAgendaAdmin, menuAgendaAdmin, 'Agenda y Horarios');
             cargarSedes();
-            
-            // Si el usuario es médico, le mostramos directamente sus horarios
-            if (user.rol === 'medico') {
-                document.getElementById('agenda-admin-selector-container').classList.add('d-none');
-                document.getElementById('agenda-admin-editor-card').classList.remove('d-none');
-                
-                // Asegurarnos de que tenemos los datos del médico
-                fetch('backend/api/get_users.php')
-                    .then(res => res.json())
-                    .then(data => {
-                        const miMedico = (data.usuarios || []).find(m => m.id == user.id);
+
+            const sel = document.getElementById('agenda-admin-medico-select');
+
+            fetch('backend/api/admin_get_medicos.php')
+                .then(res => res.json())
+                .then(medicos => {
+                    medicos = Array.isArray(medicos) ? medicos : [];
+                    window._medicosParaAgenda = medicos;
+
+                    // Si el usuario es médico, mostramos directamente sus horarios
+                    if (user.rol === 'medico') {
+                        document.getElementById('agenda-admin-selector-container').classList.add('d-none');
+                        document.getElementById('agenda-admin-editor-card').classList.remove('d-none');
+                        const miMedico = medicos.find(m => m.id == user.id);
                         if (miMedico) cargarHorariosEnEditorInline(miMedico);
+                        return;
+                    }
+
+                    // Admin / recepcionista: select de profesionales con Select2
+                    document.getElementById('agenda-admin-selector-container').classList.remove('d-none');
+                    document.getElementById('agenda-admin-editor-card').classList.add('d-none');
+
+                    sel.innerHTML = '<option value=""></option>';
+                    medicos.forEach(m => {
+                        const esp = m.especialidad_nombre ? ` — ${m.especialidad_nombre}` : '';
+                        const opt = document.createElement('option');
+                        opt.value = m.id;
+                        opt.textContent = nombreCompletoMedico(m) + esp;
+                        sel.appendChild(opt);
                     });
-            } else {
-                // Si es admin/recepcionista, llenamos el select de profesionales
-                document.getElementById('agenda-admin-selector-container').classList.remove('d-none');
-                document.getElementById('agenda-admin-editor-card').classList.add('d-none');
-                const sel = document.getElementById('agenda-admin-medico-select');
-                sel.innerHTML = '<option value="">Cargando profesionales...</option>';
-                
-                fetch('backend/api/get_users.php')
-                    .then(res => res.json())
-                    .then(data => {
-                        const medicos = (data.usuarios || []).filter(u => u.rol === 'medico');
-                        sel.innerHTML = '<option value="">-- Selecciona un profesional --</option>';
-                        medicos.forEach(m => {
-                            sel.innerHTML += `<option value="${m.id}">${limpiarNombre(m.nombre)} ${limpiarNombre(m.apellido || '')}</option>`;
-                        });
-                        
-                        // Guardamos localmente para buscar los horarios luego
-                        window._medicosParaAgenda = medicos;
+
+                    initSelect2('#agenda-admin-medico-select', {
+                        placeholder: '-- Selecciona un profesional --',
+                        allowClear: true
                     });
-            }
+                })
+                .catch(() => {
+                    if (sel) sel.innerHTML = '<option value="">Error al cargar profesionales</option>';
+                });
         });
     }
 
-    // Al seleccionar un médico en el panel de Agenda
-    const selectMedicoAgenda = document.getElementById('agenda-admin-medico-select');
-    if (selectMedicoAgenda) {
-        selectMedicoAgenda.addEventListener('change', function() {
-            if (!this.value) {
-                document.getElementById('agenda-admin-editor-card').classList.add('d-none');
-                return;
-            }
-            const medId = this.value;
-            const med = (window._medicosParaAgenda || []).find(m => m.id == medId);
-            if (med) {
-                document.getElementById('agenda-admin-editor-card').classList.remove('d-none');
-                cargarHorariosEnEditorInline(med);
-            }
-        });
-    }
+    // Al seleccionar un médico en el panel de Agenda (Select2 dispara el evento vía jQuery)
+    $('#agenda-admin-medico-select').on('change', function() {
+        if (!this.value) {
+            document.getElementById('agenda-admin-editor-card').classList.add('d-none');
+            return;
+        }
+        const med = (window._medicosParaAgenda || []).find(m => m.id == this.value);
+        if (med) {
+            document.getElementById('agenda-admin-editor-card').classList.remove('d-none');
+            cargarHorariosEnEditorInline(med);
+        }
+    });
 
     if(menuMedicos) {
         menuMedicos.addEventListener('click', (e) => {
@@ -854,6 +879,12 @@ if(modalTurno) {
                     sel.innerHTML += `<option value="${o.id}">${o.nombre}</option>`;
                 });
             });
+
+        // Select2 del médico (dropdownParent es necesario dentro de un modal de Bootstrap)
+        initSelect2('#turno-medico', {
+            dropdownParent: $('#modalNuevoTurno'),
+            placeholder: 'Selecciona un profesional...'
+        });
     });
 
     // Cambio de Especialidad -> Cargar Médicos
@@ -862,25 +893,25 @@ if(modalTurno) {
         const medicoSel = document.getElementById('turno-medico');
         medicoSel.disabled = true;
         medicoSel.innerHTML = '<option value="" selected disabled>Cargando profesionales...</option>';
-        
+
         fetch(`backend/api/get_medicos.php?especialidad_id=${espId}`)
             .then(res => res.json())
             .then(data => {
                 medicoSel.innerHTML = '<option value="" selected disabled>Selecciona un profesional...</option>';
                 if(data.length > 0) {
                     data.forEach(m => {
-                        const fullName = m.apellido ? `${m.nombre} ${m.apellido}` : m.nombre;
-                        medicoSel.innerHTML += `<option value="${m.id}">${fullName}</option>`;
+                        medicoSel.innerHTML += `<option value="${m.id}">${nombreCompletoMedico(m)}</option>`;
                     });
                     medicoSel.disabled = false;
                 } else {
                     medicoSel.innerHTML = '<option value="" selected disabled>No hay profesionales disponibles.</option>';
                 }
+                initSelect2('#turno-medico', { dropdownParent: $('#modalNuevoTurno') });
             });
     });
 
-    // Cambio de Médico -> Mostrar Paso 2
-    document.getElementById('turno-medico').addEventListener('change', (e) => {
+    // Cambio de Médico -> Mostrar Paso 2 (Select2 dispara el evento vía jQuery)
+    $('#turno-medico').on('change', function() {
         document.getElementById('step-2').classList.remove('d-none');
         document.getElementById('turno-obra-social').value = '';
         document.getElementById('planes-container').classList.add('d-none');

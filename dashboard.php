@@ -297,9 +297,14 @@
             <div id="content-medicos" class="d-none">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-3 mb-4 border-bottom">
                     <h1 class="h2 fw-bold">Gestión de Médicos</h1>
-                    <div class="input-group" style="max-width: 300px;">
-                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                        <input type="text" class="form-control" id="search-medicos" placeholder="Buscar médico...">
+                    <div class="d-flex gap-3">
+                        <div class="input-group" style="max-width: 300px;">
+                            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control" id="search-medicos" placeholder="Buscar médico...">
+                        </div>
+                        <button class="btn btn-primary rounded-pill fw-bold" data-bs-toggle="modal" data-bs-target="#modalCrearMedico">
+                            <i class="bi bi-plus-lg me-1"></i> Agregar Profesional
+                        </button>
                     </div>
                 </div>
                 <div class="row g-4" id="medicos-container">
@@ -442,6 +447,41 @@
 </div>
 
 <!-- Modal Crear Personal -->
+<!-- Modal Agregar Médico -->
+<div class="modal fade" id="modalCrearMedico" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <div class="modal-header border-bottom-0 pb-0">
+        <h1 class="modal-title fs-5 fw-bold">Agregar Profesional</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="form-crear-medico">
+            <div class="mb-3">
+                <input type="text" class="form-control" id="new-medico-nombre" placeholder="Nombre(s)" required>
+            </div>
+            <div class="mb-3">
+                <input type="text" class="form-control" id="new-medico-apellido" placeholder="Apellido(s)" required>
+            </div>
+            <div class="mb-3">
+                <input type="email" class="form-control" id="new-medico-email" placeholder="Correo Electrónico" required>
+            </div>
+            <div class="mb-3">
+                <input type="number" class="form-control" id="new-medico-dni" placeholder="DNI (sin puntos)" required>
+            </div>
+            <div class="mb-3">
+                <input type="password" class="form-control" id="new-medico-password" placeholder="Contraseña de Acceso" required>
+            </div>
+        </form>
+      </div>
+      <div class="modal-footer border-top-0 pt-0">
+        <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary rounded-pill" onclick="crearMedicoAdminBtn()">Agregar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal fade" id="modalCrearUsuario" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content rounded-4 border-0 shadow">
